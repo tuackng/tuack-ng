@@ -11,6 +11,18 @@ on:
   pull_request:
     branches: [ "master" ]
 
+  # 手动触发：用于补发/重发版本，或在未打 tag 时先构建出草稿 Release。
+  #   * 在某个 tag 上触发并留空 `tag` → 用该 tag（github.ref_name），
+  #     构建与发布都基于该 tag 的提交，适合重新发布历史版本。
+  #   * 在分支上触发并填写 `tag` → 用填写的版本号，构建基于该分支，
+  #     适合发布尚未打 tag 的新版本。
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '版本号（须有 doc/changelog/<版本号>.md）；留空则使用所选 ref'
+        required: false
+        type: string
+
 env:
   CARGO_TERM_COLOR: always
 
