@@ -1,6 +1,6 @@
 <!--
 感谢您参与 Tuack-NG 的代码贡献！
-在贡献代码之前，请先阅读贡献准则 https://github.com/tuack-ng/tuack-ng/blob/master/CONTRIBUTING.md
+在贡献代码之前，请先阅读贡献准则 https://github.com/tuackng/tuack-ng/blob/master/CONTRIBUTING.md
 ⚠ 在提交 PR 前，请确保您已在本地进行测试，且确保要实现的功能或修复的问题能正常工作。 ⚠
 ⚠ 谎报测试结果可能会导致您最高被**永久**限制向本组织中的仓库提交 PR 和进行其它互动。 ⚠
 -->

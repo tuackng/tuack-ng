@@ -48,7 +48,7 @@ pub enum MarketCommands {
 }
 
 const INDEX_URL: &str =
-    "https://raw.githubusercontent.com/tuack-ng/tuack-ng-plugins/master/index.json";
+    "https://raw.githubusercontent.com/tuackng/tuack-ng-plugins/master/index.json";
 
 /// 市场来源标记：安装时由宿主写入，供更新时识别非同源插件。
 const FROM_MARKET_MARKER: &str = ".from-market";

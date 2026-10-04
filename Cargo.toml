@@ -14,7 +14,7 @@ version = "1.1.0-alpha.3"
 edition = "2024"
 authors = ["Pulsar <Pulsar33550336@163.com>"]
 license = "AGPL-3.0-or-later"
-repository = "https://github.com/tuack-ng/tuack-ng"
+repository = "https://github.com/tuackng/tuack-ng"
 
 [workspace.dependencies]
 anyhow = { version = "1.0.100", features = ["backtrace"] }

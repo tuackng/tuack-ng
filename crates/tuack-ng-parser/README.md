@@ -2,7 +2,7 @@
 
 English | [中文](./README.zh_CN.md)
 
-Next-generation Markdown parser for [Tuack-NG](https://github.com/tuack-ng/tuack-ng), built on [rushdown](https://github.com/yuin/rushdown).
+Next-generation Markdown parser for [Tuack-NG](https://github.com/tuackng/tuack-ng), built on [rushdown](https://github.com/yuin/rushdown).
 
 A neutral, self-owned AST with byte-precise spans on inline elements, table merge support, and three-way rendering (Markdown / Typst / HTML).
 

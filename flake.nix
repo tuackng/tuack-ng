@@ -8,7 +8,7 @@
     crane.url = "github:ipetkov/crane";
 
     templates-src = {
-      url = "github:tuack-ng/templates";
+      url = "github:tuackng/templates";
       flake = false;
     };
   };
@@ -101,7 +101,7 @@
 
           meta = with pkgs.lib; {
             description = "重构后的 tuack 项目，旨在提供更加高效和轻量的出题体验。";
-            homepage = "https://github.com/tuack-ng/tuack-ng";
+            homepage = "https://github.com/tuackng/tuack-ng";
             license = licenses.agpl3Plus;
             platforms = platforms.unix;
             mainProgram = "tuack-ng";

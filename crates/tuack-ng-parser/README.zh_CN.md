@@ -2,7 +2,7 @@
 
 [English](./README.md) | 中文
 
-[Tuack-NG](https://github.com/tuack-ng/tuack-ng) 的下一代 Markdown 解析器，基于 [rushdown](https://github.com/yuin/rushdown)。
+[Tuack-NG](https://github.com/tuackng/tuack-ng) 的下一代 Markdown 解析器，基于 [rushdown](https://github.com/yuin/rushdown)。
 
 自建中立 AST、精准到 inline 元素的 span、支持表格合并、三路渲染（Markdown / Typst / HTML）。
 

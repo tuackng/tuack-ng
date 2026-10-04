@@ -1,8 +1,8 @@
 {
   "projectName": "tuack-ng",
-  "projectOwner": "tuack-ng",
+  "projectOwner": "tuackng",
   "repoType": "github",
-  "repoHost": "https://github.com/tuack-ng/tuack-ng/",
+  "repoHost": "https://github.com/tuackng/tuack-ng/",
   "files": [
     "README.md"
   ],

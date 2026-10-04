@@ -4,16 +4,16 @@
 
 ## 反馈 Bug
 
-如果在使用 Tuack-NG 的过程中遇到 Bug，可以在 [Issues](https://github.com/tuack-ng/tuack-ng/issues/new?assignees=&labels=Bug&projects=&template=BugReport.yml&title=%EF%BC%88%E5%9C%A8%E8%BF%99%E9%87%8C%E8%BE%93%E5%85%A5%E4%BD%A0%E7%9A%84%E6%A0%87%E9%A2%98%EF%BC%89) 中提交 Bug 反馈。
+如果在使用 Tuack-NG 的过程中遇到 Bug，可以在 [Issues](https://github.com/tuackng/tuack-ng/issues/new?assignees=&labels=Bug&projects=&template=BugReport.yml&title=%EF%BC%88%E5%9C%A8%E8%BF%99%E9%87%8C%E8%BE%93%E5%85%A5%E4%BD%A0%E7%9A%84%E6%A0%87%E9%A2%98%EF%BC%89) 中提交 Bug 反馈。
 
 **请务必准确地按照 Issues 模板中的要求和示例填写相关字段**，否则开发者可能难以诊断您遇到的问题。
 
 ## 提交功能请求
 
-如果您有关于 Tuack-NG 新功能的想法，欢迎在 [Issues](https://github.com/tuack-ng/tuack-ng/issues/new?assignees=&labels=%E6%96%B0%E5%8A%9F%E8%83%BD&projects=&template=FeatureRequest.yml&title=%EF%BC%88%E5%9C%A8%E8%BF%99%E9%87%8C%E8%BE%93%E5%85%A5%E4%BD%A0%E7%9A%84%E6%A0%87%E9%A2%98%EF%BC%89) 提交功能请求。提交的功能请求必须满足以下要求：
+如果您有关于 Tuack-NG 新功能的想法，欢迎在 [Issues](https://github.com/tuackng/tuack-ng/issues/new?assignees=&labels=%E6%96%B0%E5%8A%9F%E8%83%BD&projects=&template=FeatureRequest.yml&title=%EF%BC%88%E5%9C%A8%E8%BF%99%E9%87%8C%E8%BE%93%E5%85%A5%E4%BD%A0%E7%9A%84%E6%A0%87%E9%A2%98%EF%BC%89) 提交功能请求。提交的功能请求必须满足以下要求：
 
-- 提交的功能在应用 ![最新的版本号](https://img.shields.io/github/v/release/tuack-ng/tuack-ng?include_prereleases&style=flat-square&label=) 版本，和 [最新提交](https://github.com/tuack-ng/tuack-ng/commits/master/) 中还没有实现。
-- 没有与此功能请求重复或相似的 [Issues](https://github.com/tuack-ng/tuack-ng/issues?q=type%特性) 。
+- 提交的功能在应用 ![最新的版本号](https://img.shields.io/github/v/release/tuackng/tuack-ng?include_prereleases&style=flat-square&label=) 版本，和 [最新提交](https://github.com/tuackng/tuack-ng/commits/master/) 中还没有实现。
+- 没有与此功能请求重复或相似的 [Issues](https://github.com/tuackng/tuack-ng/issues?q=type%特性) 。
 - 提交的的功能是用户广泛需要的，且没有超出 Tuack-NG 作为**出题工具**的开发目标，而非添加与出题相关辅助功能无关的内容。
 
 提交的功能请求会按照以下流程处理：
@@ -44,7 +44,7 @@ TODO
 下面是一些有用的资源：
 
 - [Tuack-NG 开发文档](https://docs.tuack-ng.tech/dev)
-- [项目看板](https://github.com/orgs/tuack-ng/projects/2)
+- [项目看板](https://github.com/orgs/tuackng/projects/2)
 -->
 
 ### 贡献准则
@@ -70,7 +70,7 @@ TODO
 
 Tuack-NG 代码仓库目前具有以下分支：
 
-- [`master`](https://github.com/tuack-ng/tuack-ng/tree/master)：Tuack-NG 主要开发分支。
+- [`master`](https://github.com/tuackng/tuack-ng/tree/master)：Tuack-NG 主要开发分支。
 - `x.x`（版本号，如 `1.0`）：Tuack-NG 对分支版本对应的版本的维护分支。
 
 当开始下个版本的 Tuack-NG 时，会将当前的主分支分叉到对应的维护分支。在开发下一个版本的 Tuack-NG 过程中，也会在维护分支上并行维护当前稳定版本的功能，如以下示意图所示：
@@ -155,7 +155,7 @@ gitGraph
 
 在进行合并之前，请先测试您贡献的代码，确保您贡献的代码能稳定运作。
 
-您可以向本项目发起 [Pull Request](https://github.com/tuack-ng/tuack-ng/pulls) 来合并您的更改。在发起 Pull Request 时，请简要地描述您做的更改，并最好附上您实现的功能的演示截图/视频。
+您可以向本项目发起 [Pull Request](https://github.com/tuackng/tuack-ng/pulls) 来合并您的更改。在发起 Pull Request 时，请简要地描述您做的更改，并最好附上您实现的功能的演示截图/视频。
 
 <!-- ## 还有疑问？
 
