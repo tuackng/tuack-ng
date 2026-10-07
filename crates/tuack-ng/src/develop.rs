@@ -72,7 +72,6 @@ fn diagnostic() -> Result<()> {
 
     msg!("========== 运行时系统信息 ==========");
 
-    // 系统名称和版本
     let os_name = System::name().unwrap_or_else(|| "未知".to_string());
     let os_version = System::os_version().unwrap_or_else(|| "未知".to_string());
     let kernel = System::kernel_long_version();
@@ -81,7 +80,6 @@ fn diagnostic() -> Result<()> {
     msg!("操作系统版本   : {}", os_version);
     msg!("内核/版本      : {}", kernel);
 
-    // 内存信息
     let total_memory = sys.total_memory();
     let total_memory_gb = total_memory as f64 / 1024.0 / 1024.0 / 1024.0;
 
@@ -91,7 +89,6 @@ fn diagnostic() -> Result<()> {
         total_memory
     );
 
-    // CPU 信息
     let cpus = sys.cpus();
     let cpu_cores = cpus.len();
     let cpu_name = if let Some(first_cpu) = cpus.first() {
@@ -113,7 +110,6 @@ fn collect_files(dir: &Path) -> Vec<PathBuf> {
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
             if path.is_dir() {
-                // 递归子目录
                 files.extend(collect_files(&path));
             } else if path.is_file() {
                 // 排除特定文件
@@ -127,6 +123,7 @@ fn collect_files(dir: &Path) -> Vec<PathBuf> {
     files
 }
 
+/// 解包模板：按 `*.json` 清单把 `store/` 内的文件还原到 `unwrapped/`，清单 filelist 置空。
 fn unwrap() -> Result<()> {
     let templates_path = std::env::current_dir()?;
     let unwrapped_path = templates_path.join("unwrapped");
@@ -184,6 +181,7 @@ fn unwrap() -> Result<()> {
     Ok(())
 }
 
+/// 打包模板：按 sha256 把 `unwrapped/` 下的文件归入 `store/`，并回填清单 filelist。
 fn wrap() -> Result<()> {
     let templates_path = std::env::current_dir()?;
     let unwrapped_path = templates_path.join("unwrapped");

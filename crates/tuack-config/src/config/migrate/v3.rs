@@ -1,3 +1,7 @@
+//! v3 -> v4：把旧版 `manual` 标记转换为 `dmk`（`true` -> `Skip`，`false` -> `On`），并为题目补上顶层 `dmk`。
+//!
+//! 该迁移无须手动执行。
+
 use super::base::*;
 use crate::prelude::*;
 
@@ -87,6 +91,9 @@ impl Migrater for V3Migrater {
         }
     }
 
+    /// # Errors
+    ///
+    /// 配置不是 JSON 对象时返回 `Err`。
     fn migrate_contest(
         &self,
         mut config: serde_json::Value,
@@ -105,6 +112,9 @@ impl Migrater for V3Migrater {
 
         Ok(config)
     }
+    /// # Errors
+    ///
+    /// 配置不是 JSON 对象时返回 `Err`。
     fn migrate_day(&self, mut config: serde_json::Value, _dir: &Path) -> Result<serde_json::Value> {
         match config.as_object_mut() {
             Some(obj) => {
@@ -119,6 +129,9 @@ impl Migrater for V3Migrater {
 
         Ok(config)
     }
+    /// # Errors
+    ///
+    /// 配置不是 JSON 对象，或旧格式的 `samples`/`data` 无法按旧结构反序列化时返回 `Err`。
     fn migrate_problem(
         &self,
         mut config: serde_json::Value,

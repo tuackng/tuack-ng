@@ -17,22 +17,18 @@ use crate::prelude::*;
 pub struct IndexMapMany<K, V>(IndexMap<K, V>);
 
 impl<K, V> IndexMapMany<K, V> {
-    /// 用已有的 `IndexMap` 构造包装器
     pub fn new(map: IndexMap<K, V>) -> Self {
         Self(map)
     }
 
-    /// 解包，返回内部的 `IndexMap`
     pub fn into_inner(self) -> IndexMap<K, V> {
         self.0
     }
 
-    /// 获取内部 `IndexMap` 的引用
     pub fn inner(&self) -> &IndexMap<K, V> {
         &self.0
     }
 
-    /// 获取内部 `IndexMap` 的可变引用
     pub fn inner_mut(&mut self) -> &mut IndexMap<K, V> {
         &mut self.0
     }

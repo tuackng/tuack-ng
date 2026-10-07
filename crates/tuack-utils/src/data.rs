@@ -6,7 +6,7 @@ use tuack_config::{DmkConfig, ExpandedDataItem, ExpandedSampleItem, ProblemConfi
 use tuack_lib::data::{Data, DataMut, DmkItem, Reader};
 use tuack_lib::utils::testlib::Arg;
 
-/// 构造正式数据的 `FsTestData` 列表（从 `data/` 读取）。
+/// 构造正式数据的 [`FsTestData`] 列表（从 `data/` 读取）。
 pub fn problem_test_data(problem: &ProblemConfig) -> Vec<FsTestData<'_>> {
     problem
         .runtime
@@ -16,7 +16,7 @@ pub fn problem_test_data(problem: &ProblemConfig) -> Vec<FsTestData<'_>> {
         .collect()
 }
 
-/// 构造样例数据的 `FsTestData` 列表（从 `sample/` 读取）。
+/// 构造样例数据的 [`FsTestData`] 列表（从 `sample/` 读取）。
 pub fn problem_sample_data(problem: &ProblemConfig) -> Vec<FsTestData<'_>> {
     problem
         .runtime
@@ -33,7 +33,7 @@ enum TestItemRef<'a> {
     Sample(&'a ExpandedSampleItem),
 }
 
-/// 从文件系统读取的测试数据，持有基础目录与对配置项的引用。
+/// 从文件系统读取的测试数据，持有基础目录与对配置项的引用
 #[derive(Clone)]
 pub struct FsTestData<'a> {
     base_dir: PathBuf,
@@ -69,7 +69,7 @@ impl<'a> FsTestData<'a> {
         }
     }
 
-    /// 该测试点的生成行为。
+    /// 该测试点的生成行为
     pub fn dmk(&self) -> DmkConfig {
         match &self.item {
             TestItemRef::Data(item) => item.dmk,
@@ -77,27 +77,27 @@ impl<'a> FsTestData<'a> {
         }
     }
 
-    /// 该测试点是否生成输入。
+    /// 该测试点是否生成输入
     pub fn gen_input(&self) -> bool {
         matches!(self.dmk(), DmkConfig::Input | DmkConfig::On)
     }
 
-    /// 该测试点是否生成输出。
+    /// 该测试点是否生成输出
     pub fn gen_output(&self) -> bool {
         matches!(self.dmk(), DmkConfig::Output | DmkConfig::On)
     }
 
-    /// 输入文件的完整路径。
+    /// 输入文件的完整路径
     pub fn input_path(&self) -> PathBuf {
         self.base_dir.join(self.input_name())
     }
 
-    /// 输出文件的完整路径。
+    /// 输出文件的完整路径
     pub fn output_path(&self) -> PathBuf {
         self.base_dir.join(self.answer_name())
     }
 
-    /// 该测试点的满分 (样例约定每点 1 分)。
+    /// 该测试点的满分（样例约定每点 1 分）
     pub fn full_score(&self) -> u32 {
         match &self.item {
             TestItemRef::Data(item) => item.score,
@@ -105,7 +105,7 @@ impl<'a> FsTestData<'a> {
         }
     }
 
-    /// 该测试点所属子任务 (样例约定为 0)。
+    /// 该测试点所属子任务（样例约定为 0）
     pub fn subtask(&self) -> u32 {
         match &self.item {
             TestItemRef::Data(item) => item.subtask,
@@ -113,7 +113,7 @@ impl<'a> FsTestData<'a> {
         }
     }
 
-    /// 该测试点编号。
+    /// 该测试点编号
     pub fn id(&self) -> u32 {
         match &self.item {
             TestItemRef::Data(item) => item.id,

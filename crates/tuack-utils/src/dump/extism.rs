@@ -18,10 +18,10 @@ use crate::plugin::extism::context::{
     AssetStreams, PluginContext, READONLY_ASSET_MOUNT, common_imports, specs_to_outputs,
 };
 
-/// 一个基于 extism 的导出器插件。
+/// extism 导出器插件：在宿主内加载插件 wasm 并实现 [`Dumper`]
 ///
-/// 插件声明 `wasi` 时，宿主把临时目录映射为插件内的 `/`（`/out` 为产物工作区）；
-/// 插件返回产物描述列表与警告，资产流由宿主直接取用（host-to-host）。
+/// 宿主把临时目录映射为插件内的 `/`（`/out` 为产物工作区），插件声明 `wasi` 时才启用
+/// WASI 文件访问；插件返回产物描述列表与警告，资产流由宿主直接取用（host-to-host）。
 pub struct ExtismDumper {
     plugin: Mutex<extism::Plugin>,
     function: String,
@@ -30,8 +30,12 @@ pub struct ExtismDumper {
 }
 
 impl ExtismDumper {
-    /// `asset_dir` 为插件随包资源目录，映射到只读 WASI 路径 `/assets`；
+    /// 构造 extism 导出器：`asset_dir` 为插件随包资源目录，映射到只读 WASI 路径 `/assets`；
     /// `command` 为允许执行的宿主命令白名单。
+    ///
+    /// # Errors
+    ///
+    /// 创建临时子目录失败、wasm 加载或插件初始化失败，或插件未导出 `function` 时返回 `Err`。
     pub fn new(
         wasm: Vec<u8>,
         function: String,
@@ -70,6 +74,8 @@ impl ExtismDumper {
 }
 
 impl Dumper for ExtismDumper {
+    /// 插件锁中毒，或插件回传的产物描述越过工作区（`/out`）、引用不存在的资产流时返回
+    /// `Err`；插件调用本身的失败见 [`Dumper::dump`]。
     fn dump(
         &self,
         doc: &DumpDocument,

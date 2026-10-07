@@ -10,6 +10,8 @@ use tuack_config::lang::Language;
 use tuack_lib::data::Reader;
 use tuack_lib::utils::compiler::{IoMode, RunResult, RunSpec, Runner, RunnerManifest};
 
+/// 通用运行器的 [`Runner`] 实现：按 [`Language`] 配置模板渲染编译与运行命令，再在资源限制
+/// 下执行；无编译器的语言直接拷贝源文件
 pub struct GeneralRunner {
     tmp_dir: TempDir,
     source: PathBuf,
@@ -19,6 +21,11 @@ pub struct GeneralRunner {
 }
 
 impl GeneralRunner {
+    /// 创建临时目录，并按源文件扩展名查编译选项与语言配置。
+    ///
+    /// # Errors
+    ///
+    /// 源文件无扩展名，或 `compile_args`/`languages` 未登记该扩展名时返回 `Err`。
     pub fn new(
         source: impl Into<PathBuf>,
         compile_args: &IndexMap<String, String>,
@@ -139,6 +146,7 @@ impl Runner for GeneralRunner {
         RunnerManifest { interactive: false }
     }
 
+    /// 语言无编译器配置时只把源文件拷贝为 `{program_name}.{扩展名}`。
     fn prepare(&mut self) -> Result<()> {
         if !self.tmp_dir.path().exists() {
             fs::create_dir_all(&self.tmp_dir)?;
@@ -174,10 +182,12 @@ impl Runner for GeneralRunner {
         Ok(())
     }
 
+    /// 通用运行器不支持交互：模板无法链接交互库
     fn set_interactive(&mut self, _grader_file: &Path, _header_file: &Path) -> Result<()> {
         unreachable!("通用运行器不支持交互");
     }
 
+    /// 语言未配运行模板时直接执行 `{program_name}`；运行命令模板渲染或解析失败时返回 `Err`。
     fn execute(&mut self, spec: RunSpec) -> Result<RunResult> {
         let RunSpec {
             limits,
@@ -188,6 +198,8 @@ impl Runner for GeneralRunner {
         let mut cmd = self.get_run_base_command()?;
         cmd.current_dir(&self.tmp_dir);
 
+        // IO 模式决定数据读写方式：Stdio 把输入写入文件后接入 stdin、标准输出落文件；
+        // File 由程序自行读写 input_name/output_name，标准流置空
         match &io_mode {
             IoMode::Stdio => {
                 let stdin_path = self.tmp_dir.path().join("pipe_stdin");
@@ -218,7 +230,6 @@ impl Runner for GeneralRunner {
 
         let (status, time, memory) = ProcessSupervisor::new(limits).supervise_blocking(cmd)?;
 
-        // 读取 stderr
         let stderr = std::fs::read(stderr_path)?;
 
         // 输出流：只有输出文件不存在时视为无输出；权限等其他错误传播

@@ -116,7 +116,7 @@ fn typst_hard_line_break() {
 
 #[test]
 fn typst_soft_line_break() {
-    // 软换行（普通换行）→ typst `#linebreak()`（保留换行）
+    // 软换行（普通换行）-> typst `#linebreak()`（保留换行）
     let src = "第一行\n第二行";
     let out = render_typst(&tuack_ng_parser::parse(src));
     assert!(

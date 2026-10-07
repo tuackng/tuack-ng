@@ -1,6 +1,7 @@
 //! span（字节区间）与行的换算工具。
 
-/// 计算 1 起行号对应的整行字节区间 `[行首，行尾)`（不含换行符）。
+/// 计算 1 起行号对应的整行字节区间 `[start, end)`（不含换行符）。
+/// 行号为 0 或越界时返回 None（行按换行符切分，末尾换行符之后仍计一行）。
 pub fn line_to_byte_span(source: &str, line: usize) -> Option<tuack_ng_parser::Span> {
     if line == 0 {
         return None;

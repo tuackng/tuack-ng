@@ -3,10 +3,10 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-/// 源码中的字节区间 `[start, stop)`。
+/// 源码中的字节区间 `[start, stop)`
 ///
-/// - 叶子 inline（Text/Code/Autolink/Latex/Html/LineBreak）：`source[start..stop]` 精确等于内容。
-/// - Block 及复合 inline（Emphasis/Strong/Strikethrough）：不保证精确，仅作定位。
+/// 叶子 inline 中 Code 的区间为空（`start == stop`，指向开头反引号），其余叶子精确覆盖其
+/// 源码文本；块节点仅作定位，`start` 可靠。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Span {
@@ -20,6 +20,10 @@ impl Span {
     }
 
     /// 从源码切片。
+    ///
+    /// # Panics
+    ///
+    /// 当 `start`/`stop` 越界、落在非 UTF-8 字符边界，或 `start > stop` 时 panic。
     pub fn str<'a>(&self, source: &'a str) -> &'a str {
         &source[self.start..self.stop]
     }
@@ -31,10 +35,11 @@ impl From<(usize, usize)> for Span {
     }
 }
 
-/// 值 + 可选的源码位置。
+/// 值 + 可选的源码位置
 ///
-/// 复合节点（Emphasis/Strong/Strikethrough 及 Block）不携带 span，为 `None`；
-/// 叶子节点携带精确的 `Some(Span)`。
+/// 叶子 inline（Text/Code/Latex/Html/FootnoteReference）与块（`BlockKind::Empty` 除外）为
+/// `Some`；SoftBreak/LineBreak/Link/LinkReference/Image/Autolink 与复合 inline
+/// （Emphasis/Strong/Strikethrough）为 `None`。
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Spanned<T> {
@@ -47,7 +52,7 @@ impl<T> Spanned<T> {
         Self { value, span }
     }
 
-    /// 带必现 span 的构造（`spanned` 方法因与类型同名被弃用，见 `same_name_method`）
+    /// 构造带必现 span 的值（方法名避开与类型同名，见 clippy `same_name_method`）。
     pub fn with_span(value: T, span: Span) -> Self {
         Self {
             value,

@@ -28,8 +28,12 @@ impl Visitor for ImageCollector {
     }
 }
 
-/// 检查并重写文档中的图片 URL，返回 `(重写后的 AST, 原始 URL -> 目标 URL 映射)`。
-/// 映射以 `PathBuf` 承载，`AssetProvider::load` 直接消费。
+/// 检查并重写文档中的图片 URL，返回 `(重写后的 AST, 原始 URL -> 目标 URL 映射)`
+///
+/// # Errors
+///
+/// 存在不以 `img/`（或 `./img/`）开头，或含目录穿越（`..`、根目录、盘符组件）的图片 URL 时
+/// 返回 `Err`，消息汇总全部不合法 URL。
 pub fn rewrite_images(ast: Document, idx: u64) -> Result<(Document, IndexMap<PathBuf, PathBuf>)> {
     use std::path::Component;
 
@@ -67,7 +71,11 @@ pub fn rewrite_images(ast: Document, idx: u64) -> Result<(Document, IndexMap<Pat
     Ok((ast, map))
 }
 
-/// 按 `filelist`（相对路径 -> store 内文件名）从 assets store 解压模板到目标目录
+/// 从 assets store 按 `filelist`（相对路径 -> store 内文件名）解压模板到目标目录
+///
+/// # Errors
+///
+/// `filelist` 中的某个 sha256 在所有 assets 目录中都不存在，或创建目录、复制文件失败时返回 `Err`。
 pub fn unwrap_template(
     filelist: &IndexMap<String, String>,
     output_dir: &Path,

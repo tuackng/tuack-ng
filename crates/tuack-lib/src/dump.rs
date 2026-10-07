@@ -1,11 +1,7 @@
 //! Dump 后端：导出抽象，与 ren 同构。
 //!
-//! - `DumpDocument` 是不可变输入（day 级纯数据），`Dumper::dump` 产出 `(Vec<OutputFile>, Vec<String>)`——
-//!   导出产物文件与导出过程中的面向用户警告（如平台限制、编译失败提示），由调用方负责展示。
-//! - dumper 不访问配置对象；用户资源（data/sample/down/checker）一律经 `AssetProvider` 获取。
-//! - dumper 可进行为生成导出产物所必需的内部 I/O（写临时目录、编译 checker 等）
-//! - 资源访问（`AssetProvider`）作为能力在 `Dumper::dump` 时单独注入，不随文档数据传递，
-//!   因此本结构可序列化、可跨边界（如 WASM 插件）。
+//! [`DumpDocument`] 是不可变、可序列化的 day 级输入（要跨 WASM 边界）；实现可进行产出所
+//! 必需的 I/O，但资源均经 [`AssetProvider`] 单独注入，不直接接触配置。
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -15,11 +11,14 @@ use crate::problem::ProblemMeta;
 use crate::utils::asset::AssetProvider;
 use crate::utils::output::OutputFile;
 
-/// 评分策略（渲染后端无关枚举）
+/// 评分策略
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ScorePolicy {
+    /// 子任务得分取各测试点得分之和
     Sum,
+    /// 子任务得分取各测试点中的最低分
     Min,
+    /// 子任务得分取各测试点中的最高分
     Max,
 }
 
@@ -45,7 +44,7 @@ pub struct DumpCase {
     pub output: PathBuf,
 }
 
-/// Subtask
+/// 子任务：测试点集合与评分方式
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DumpSubtask {
     /// 数据点在 data 中的下标
@@ -98,8 +97,15 @@ pub struct DumpDocument {
     pub problems: Vec<DumpProblem>,
 }
 
-/// 导出器：`DumpDocument -> (产物文件列表，导出警告)`。
+/// 导出器：把 [`DumpDocument`] 导出为产物文件与警告文本。
 pub trait Dumper: Send + Sync {
+    /// 导出文档，返回产物文件列表与导出过程中的警告文本
+    ///
+    /// # Errors
+    ///
+    /// 导出失败时返回 `Err`：资源读取失败、生成产物所必需的编译或外部命令失败、
+    /// 外部导出器插件调用失败，或产物写入失败。导出过程中的警告文本经返回值的第二个
+    /// 元素报告。
     fn dump(
         &self,
         doc: &DumpDocument,

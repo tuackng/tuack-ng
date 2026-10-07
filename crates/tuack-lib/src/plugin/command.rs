@@ -20,7 +20,7 @@ pub enum CommandError {
     /// 命令不在组件白名单内
     #[error("插件无权执行命令：{0}")]
     NotAllowed(String),
-    /// 进程未能启动（不存在、无权限、格式错误等）
+    /// 进程未能启动（可执行文件不存在、无权限或格式错误）
     #[error("无法启动命令 {program}：{message}")]
     SpawnFailed { program: String, message: String },
     /// 工作目录越界或非法

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use vergen::{BuildBuilder, CargoBuilder, Emitter, RustcBuilder, SysinfoBuilder};
 
-/// workspace 根目录（crates/tuack-ng 的父目录的父目录），assets/vendor 都在根下
+/// 返回 workspace 根目录（crates/tuack-ng 的父目录的父目录），assets/vendor 都在根下
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -16,6 +16,7 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
+/// 把 testlib.h 复制到 `assets/checkers`，目标已存在且内容一致时跳过。
 fn copy_testlib(source: PathBuf) -> io::Result<()> {
     let checkers_dir = workspace_root().join("assets/checkers");
     let testlib_dest = checkers_dir.join("testlib.h");
@@ -23,10 +24,8 @@ fn copy_testlib(source: PathBuf) -> io::Result<()> {
     println!("cargo:rerun-if-changed={}", checkers_dir.display());
     println!("cargo:rerun-if-changed={}", source.display());
 
-    // 确保目标目录存在
     fs::create_dir_all(&checkers_dir)?;
 
-    // 检查源文件是否存在
     if !source.exists() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
@@ -34,9 +33,7 @@ fn copy_testlib(source: PathBuf) -> io::Result<()> {
         ));
     }
 
-    // 检查是否需要拷贝（文件不存在或内容不同）
     let should_copy = if testlib_dest.exists() {
-        // 比较文件内容
         let src_content = fs::read(&source)?;
         let dst_content = fs::read(&testlib_dest)?;
         src_content != dst_content
@@ -59,10 +56,10 @@ fn main() {
     }
     #[cfg(feature = "nix")]
     {
+        // Nix 构建从 NIX_TESTLIB_PATH 读取 testlib.h（Nix store 路径）
         let testlib_path = std::env::var("NIX_TESTLIB_PATH").unwrap();
         copy_testlib(testlib_path.into()).unwrap();
     }
-    // 编译 C++ 文件
     if let Ok(entries) = fs::read_dir(&checkers_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -105,14 +102,13 @@ fn main() {
         .unwrap();
 }
 
+/// 用 g++ 重新编译源码较新（或产物缺失）的 checker。
 fn compile_cpp_if_needed(cpp_file: &Path) {
     let exe_name = cpp_file.with_extension(env::consts::EXE_EXTENSION);
     let exe_name = exe_name.file_name().unwrap().to_string_lossy();
     let exe_path = cpp_file.parent().unwrap().join(exe_name.to_string());
 
-    // 检查可执行文件是否存在，以及是否比源码更旧
     let need_compile = if exe_path.exists() {
-        // 获取文件修改时间
         let src_modified = fs::metadata(cpp_file)
             .and_then(|m| m.modified())
             .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
@@ -121,10 +117,8 @@ fn compile_cpp_if_needed(cpp_file: &Path) {
             .and_then(|m| m.modified())
             .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
 
-        // 如果源码比可执行文件新，则需要重新编译
         src_modified > exe_modified
     } else {
-        // 可执行文件不存在，需要编译
         true
     };
 
@@ -140,7 +134,8 @@ fn compile_cpp_if_needed(cpp_file: &Path) {
             .arg(exe_name.to_string());
         #[cfg(not(feature = "nix"))]
         {
-            cmd.arg("-static"); // Nix 下 static 还是算了
+            // 默认静态链接 checker 便于分发；NixOS 无静态 glibc，nix feature 下不传该参数
+            cmd.arg("-static");
         }
 
         let status = cmd.status();
@@ -157,6 +152,5 @@ fn compile_cpp_if_needed(cpp_file: &Path) {
         }
     }
 
-    // 告诉 cargo 监听这个文件的变化
     println!("cargo:rerun-if-changed={}", cpp_file.display());
 }

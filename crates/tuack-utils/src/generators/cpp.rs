@@ -5,6 +5,8 @@ use crate::prelude::*;
 use tuack_lib::data::Reader;
 use tuack_lib::utils::testlib::{Arg, Generator};
 
+/// C++ 数据生成器的 [`Generator`] 实现：把源文件与依赖复制到临时目录后用 `g++`
+/// 编译，运行时把 [`Arg`] 展成 `-键=值` 并追加 `-seed`，stdout 作为产物流返回
 pub struct CppGenerator {
     tmp_dir: TempDir,
     source: PathBuf,
@@ -14,6 +16,12 @@ pub struct CppGenerator {
 }
 
 impl CppGenerator {
+    /// 创建临时目录，并按源文件扩展名从 `compile_args` 取编译选项（未登记时用默认
+    /// `-O2 -std=c++17`）。
+    ///
+    /// # Errors
+    ///
+    /// 源文件无扩展名时返回 `Err`。
     pub fn new(
         source: impl Into<PathBuf>,
         compile_args: &IndexMap<String, String>,
@@ -103,7 +111,7 @@ impl Generator for CppGenerator {
 
         cmd_args.push(format!("-seed={}", seed).to_string());
 
-        // stdout/stderr 重定向到临时文件，避免整块读入内存
+        // PERF: stdout/stderr 重定向到临时文件，避免整块读入内存
         let out_path = self.tmp_dir.path().join(format!("gen-{seed}.out"));
         let err_path = self.tmp_dir.path().join(format!("gen-{seed}.err"));
         let out_file = std::fs::File::create(&out_path)?;

@@ -1,6 +1,6 @@
 //! Markdown 渲染器。
 //!
-//! 表格**不处理合并**（`<`/`^` 原样输出）。
+//! 表格**不处理合并**：`<`/`^` 标记单元格原样输出，不展开 colspan/rowspan。
 
 use crate::ast::block::{BlockKind, CodeBlockKind, ContainerParam, HeadingKind, SetextHeading};
 use crate::ast::inline::{InlineKind, LinkReferenceKind};
@@ -8,7 +8,7 @@ use crate::ast::list::{ListBulletKind, ListKind};
 use crate::ast::{Document, Inline};
 use rushdown::util::{is_punct, is_space};
 
-/// 渲染为 Markdown 字符串。
+/// 渲染为 Markdown 字符串
 pub fn render_markdown(doc: &Document) -> String {
     let mut out = String::new();
     for (i, block) in doc.blocks.iter().enumerate() {
@@ -154,7 +154,7 @@ fn render_block(block: &BlockKind, out: &mut String, _indent: usize) {
                 out.push_str(&c.kind);
             } else {
                 // kind 含空格/为空/含特殊字符时裸输出会破坏 fence 行，
-                // 改用 class 属性形式输出（值经实体转义），保证再解析不炸。
+                // 改用 class 属性形式输出（值经实体转义），保证可再解析。
                 out.push_str("{class=\"");
                 out.push_str(&escape_attr_value(&c.kind));
                 out.push_str("\"}");
@@ -346,7 +346,7 @@ fn render_table(table: &crate::ast::Table, out: &mut String) {
         .max(rows.iter().map(|r| r.len()).max().unwrap_or(0));
     let widths = column_widths(&rows, &table.alignments, col_count);
 
-    // header
+    // 表头
     out.push('|');
     for (i, cell) in rows[0].iter().enumerate() {
         let align = table
@@ -359,13 +359,13 @@ fn render_table(table: &crate::ast::Table, out: &mut String) {
         out.push_str(" |");
     }
     out.push('\n');
-    // separator
+    // 分隔行
     out.push('|');
     for (i, align) in table.alignments.iter().enumerate() {
         let w = widths.get(i).copied().unwrap_or(3);
         out.push(' ');
         let sep = match align {
-            // ppp：Left 与 None 均输出纯 `-`。
+            // Left 与 None 均输出纯 `-`。
             crate::ast::Alignment::Left | crate::ast::Alignment::None => "-".repeat(w),
             crate::ast::Alignment::Center => format!(":{}:", "-".repeat(w - 2)),
             crate::ast::Alignment::Right => format!("{}:", "-".repeat(w - 1)),
@@ -374,7 +374,7 @@ fn render_table(table: &crate::ast::Table, out: &mut String) {
         out.push_str(" |");
     }
     out.push('\n');
-    // body
+    // 表体
     for row in rows.iter().skip(1) {
         out.push('|');
         for (i, cell) in row.iter().enumerate() {

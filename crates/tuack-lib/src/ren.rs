@@ -1,10 +1,8 @@
-//! 渲染抽象
+//! 渲染抽象，与 dump 同构。
 //!
-//! 渲染指：以数据变换为核心的操作，旨在将原文档转换为各种形式。
-//!
-//! - `RenderDocument` 是不可变输入，`Renderer::render` 产出 `Vec<OutputFile>`。
-//! - 渲染器允许的，可忽略不计的副作用：写自己的临时目录、调用外部命令（如 typst）。
-//! - 渲染器禁止：访问 `gctx()`（获取资源可能除外）、直接读取用户资源（除非经 `AssetProvider`）、写最终输出目录。
+//! [`RenderDocument`] 是不可变输入，[`Renderer::render`] 产出 [`OutputFile`] 列表。实现可
+//! 进行渲染所必需的 I/O（写临时目录、调用外部命令），但资源均经 [`AssetProvider`] 取得，
+//! 且不写最终输出目录。
 
 pub mod document;
 pub mod processor;
@@ -17,8 +15,14 @@ pub use processor::{ProcessorOutput, RenProcessor};
 use crate::prelude::*;
 use crate::utils::asset::AssetProvider;
 
-/// 渲染器：`RenderDocument -> (主产物相对路径，产物文件列表)`。
+/// 渲染器：把 [`RenderDocument`] 渲染为产物文件，并给出主产物相对路径。
 pub trait Renderer: Send + Sync {
+    /// 渲染文档，返回主产物相对路径与全部产物文件
+    ///
+    /// # Errors
+    ///
+    /// 渲染失败时返回 `Err`：资源读取失败、模板展开或排版失败（如依赖的外部命令缺失或
+    /// 以非零码退出）、外部渲染器插件调用失败，或产物写入失败。
     fn render(
         &self,
         doc: &RenderDocument,

@@ -1,10 +1,17 @@
-//! 插件管理器：扫描自带模板与插件包，并按名提供渲染器/导出器实例。
+//! 插件管理器：扫描自带模板与插件包，并按名提供渲染器/处理器/导出器实例。
 //!
-//! - 自带模板：`<assets_dir>/templates/<name>.json`（`TemplateManifest` + store 内容寻址）。
+//! - 自带模板：`<assets_dir>/templates/<name>.json`（[`TemplateManifest`] + store 内容寻址）。
 //! - 插件包：`<用户目录>/plugins/<pkg>/plugin.toml`（仅用户目录，见 [`PluginManager::discover`]）。
 //!
-//! 冲突与失败策略：插件包解析失败、`pluginapi` 不可加载、包名与已发现插件重复、
-//! 组件名与同域内置/其他插件冲突时，**跳过该包并警告**；自带模板解析失败为硬错误。
+//! 失败策略分两类：
+//!
+//! - **跳过该包并警告**：插件包清单解析失败、`pluginapi` 不可加载、包名与已发现插件重复、
+//!   组件名与同域内置/其他插件冲突。包仍出现在 [`PluginManager::plugin_statuses`] 里，
+//!   状态为 [`PluginState::Error`]；禁用（`.disabled`）与未信任（无 `.trusted`）的包不加载，
+//!   但不算错误。
+//! - **硬错误**：自带模板清单解析失败，以及按名实例化 [`PluginManager::renderer`] /
+//!   [`PluginManager::dumper`] 时的解析与构建失败，直接返回 `Err`。
+//!
 //! 不同域（dumper/renderer/processor/ren_template）允许同名。
 
 use tempfile::TempDir;
@@ -16,7 +23,7 @@ use tuack_lib::plugin::PLUGIN_API_VERSION;
 use crate::prelude::*;
 use crate::ren::manifest::{TargetType, TemplateManifest};
 
-/// 渲染配置（模板默认值，可被工程 day/contest 覆盖）。
+/// 渲染配置（模板默认值，可被工程 day/contest 覆盖）
 #[derive(Debug, Clone, Copy)]
 pub struct RenderOptions {
     pub use_pretest: bool,
@@ -24,14 +31,14 @@ pub struct RenderOptions {
     pub file_io: bool,
 }
 
-/// 内置渲染器（按内置名引用）。
+/// 内置渲染器（按内置名引用）
 #[derive(Debug, Clone)]
 pub(crate) enum BuiltinRenderer {
     Typst,
     Markdown,
 }
 
-/// 内置导出器（按内置名引用）。
+/// 内置导出器（按内置名引用）
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum BuiltinDumper {
     Lemon,
@@ -39,35 +46,35 @@ pub(crate) enum BuiltinDumper {
     CcrPlus,
 }
 
-/// 插件组件定位（跨包引用暂不允许，但定位信息保留）。
+/// 插件组件定位（跨包引用暂不允许，但定位信息保留）
 #[derive(Debug, Clone)]
 pub(crate) struct PluginRef {
     pub package: String,
     pub component: String,
 }
 
-/// 渲染器引用。
+/// 渲染器引用
 #[derive(Debug, Clone)]
 pub(crate) enum RendererRef {
     Builtin(BuiltinRenderer),
     Plugin(PluginRef),
 }
 
-/// 处理器引用。
+/// 处理器引用
 #[derive(Debug, Clone)]
 pub(crate) enum ProcessorRef {
     Builtin(String),
     Plugin(PluginRef),
 }
 
-/// 导出器引用。
+/// 导出器引用
 #[derive(Debug, Clone)]
 pub(crate) enum DumperRef {
     Builtin(BuiltinDumper),
     Plugin(PluginRef),
 }
 
-/// 模板来源。
+/// 模板来源
 #[derive(Debug, Clone)]
 pub(crate) enum TemplateSource {
     /// 自带模板：从内容寻址 store 解包（`filelist`）
@@ -78,7 +85,7 @@ pub(crate) enum TemplateSource {
     Empty,
 }
 
-/// 已解析的渲染模板。
+/// 已解析的渲染模板
 #[derive(Debug, Clone)]
 pub(crate) struct ResolvedTemplate {
     pub source: TemplateSource,
@@ -89,7 +96,7 @@ pub(crate) struct ResolvedTemplate {
     pub file_io: bool,
 }
 
-/// 插件包。
+/// 插件包
 #[allow(dead_code)] // description/license/repo_url/url 暂存，供将来市场功能使用
 pub(crate) struct PluginPackage {
     pub name: String,
@@ -106,17 +113,17 @@ pub(crate) struct PluginPackage {
     pub components: IndexMap<(ComponentKind, String), Component>,
 }
 
-/// 内置模板登记项（惰性解析清单）。
+/// 内置模板登记项（惰性解析清单）
 struct BuiltinTemplate {
     path: PathBuf,
 }
 
-/// 内置渲染器/处理器/导出器的保留名。
+/// 内置渲染器/处理器/导出器的保留名
 const BUILTIN_RENDERERS: &[&str] = &["typst", "markdown"];
 const BUILTIN_PROCESSORS: &[&str] = &["loj_table", "html_table", "uoj_title"];
 const BUILTIN_DUMPERS: &[&str] = &["lemon", "arbiter", "ccr-plus"];
 
-/// 插件状态。
+/// 插件状态
 #[derive(Debug, Clone)]
 pub enum PluginState {
     /// 未信任（没有 `.trusted`，不加载）
@@ -130,13 +137,13 @@ pub enum PluginState {
 }
 
 impl PluginState {
-    /// 是否加载失败。
+    /// 判断是否加载失败
     pub fn is_error(&self) -> bool {
         matches!(self, PluginState::Error(_))
     }
 }
 
-/// 一个已发现插件的状态。
+/// 一个已发现插件的状态
 #[derive(Debug, Clone)]
 pub struct PluginStatus {
     /// 包名（清单解析失败时用目录名兜底）
@@ -149,7 +156,7 @@ pub struct PluginStatus {
 }
 
 impl PluginStatus {
-    /// 失败原因（非错误状态时为 `None`）。
+    /// 返回失败原因；仅在错误状态下为 `Some`
     pub fn reason(&self) -> Option<&str> {
         match &self.state {
             PluginState::Error(reason) => Some(reason),
@@ -158,15 +165,15 @@ impl PluginStatus {
     }
 }
 
-/// 禁用标记文件名（存在于插件目录时禁用）。
+/// 禁用标记文件名（存在于插件目录时禁用）
 pub const DISABLED_MARKER: &str = ".disabled";
-/// 信任标记文件名（存在于插件目录时视为已信任）。
+/// 信任标记文件名（存在于插件目录时视为已信任）
 pub const TRUSTED_MARKER: &str = ".trusted";
 
 /// 渲染所需：渲染器、渲染配置与处理器链。
 pub type RenderSetup = (Box<dyn Renderer>, RenderOptions, Vec<Box<dyn RenProcessor>>);
 
-/// 插件管理器。
+/// 插件管理器
 pub struct PluginManager {
     templates: IndexMap<String, BuiltinTemplate>,
     packages: IndexMap<String, PluginPackage>,
@@ -182,6 +189,10 @@ pub struct PluginManager {
 
 impl PluginManager {
     /// 扫描 `assets_dirs`（自带模板）与 `plugin_dir`（插件包，仅用户目录），构建管理器。
+    ///
+    /// 本方法不返回错误：插件包的失败（清单解析失败、禁用、未信任、`pluginapi` 不可加载、
+    /// 包名或组件名冲突）只登记为对应 [`PluginStatus`] 的 [`PluginState`]，不中断发现过程。
+    /// 自带模板此时仅登记路径，清单解析失败要到 [`PluginManager::renderer`] 才作为硬错误暴露。
     ///
     /// 兼容性由插件声明的 `pluginapi` 与 [`tuack_lib::plugin::PLUGIN_API_VERSION`] 判定。
     /// 各插件加载状态见 [`PluginManager::plugin_statuses`]。
@@ -348,12 +359,17 @@ impl PluginManager {
         }
     }
 
-    /// 全部已发现插件的状态（含加载成功与失败）。
+    /// 返回全部已发现插件的状态（含加载成功与失败）
     pub fn plugin_statuses(&self) -> &[PluginStatus] {
         &self.statuses
     }
 
     /// 按包名查找插件状态（清单解析失败时 `name` 为目录名兜底）。
+    ///
+    /// # Errors
+    ///
+    /// 包名不在已发现列表中时返回 `Err`：被禁用、未信任或跳过加载的包也在列表内，
+    /// 因此"查到"不等于"已加载"。
     pub fn plugin(&self, name: &str) -> Result<&PluginStatus> {
         self.statuses
             .iter()
@@ -361,17 +377,17 @@ impl PluginManager {
             .context(format!("未找到插件：{}", name))
     }
 
-    /// 加载失败（`Error`）的插件。
+    /// 迭代所有加载失败（[`PluginState::Error`]）的插件状态
     pub fn failed_plugins(&self) -> impl Iterator<Item = &PluginStatus> {
         self.statuses.iter().filter(|s| s.state.is_error())
     }
 
-    /// 用户插件目录。
+    /// 返回用户插件目录
     pub fn plugins_dir(&self) -> &Path {
         &self.plugin_dir
     }
 
-    /// 模板名是否存在（自带模板或插件 `ren_template` 组件）。
+    /// 判断模板名是否存在（自带模板或插件 `ren_template` 组件）
     pub fn template_exists(&self, name: &str) -> bool {
         self.templates.contains_key(name)
             || self
@@ -379,7 +395,7 @@ impl PluginManager {
                 .contains_key(&(ComponentKind::RenTemplate, name.to_string()))
     }
 
-    /// 可用模板名（自带模板 + 插件 `ren_template` 组件），已排序去重。
+    /// 返回可用模板名（自带模板 + 插件 `ren_template` 组件），已排序去重。
     pub fn template_names(&self) -> Vec<String> {
         let mut names: Vec<String> = self.templates.keys().cloned().collect();
         names.extend(self.component_names(ComponentKind::RenTemplate));
@@ -388,7 +404,7 @@ impl PluginManager {
         names
     }
 
-    /// 可用导出器名（内置 + 插件 `dumper` 组件），已排序去重。
+    /// 返回可用导出器名（内置 + 插件 `dumper` 组件），已排序去重。
     pub fn dumper_names(&self) -> Vec<String> {
         let mut names: Vec<String> = BUILTIN_DUMPERS.iter().map(|s| s.to_string()).collect();
         names.extend(self.component_names(ComponentKind::Dumper));
@@ -397,7 +413,7 @@ impl PluginManager {
         names
     }
 
-    /// 某域下所有已加载插件组件的名字。
+    /// 迭代某域下所有已加载插件组件的名字
     fn component_names(&self, kind: ComponentKind) -> impl Iterator<Item = String> + '_ {
         self.component_owner
             .keys()
@@ -409,7 +425,12 @@ impl PluginManager {
         self.packages.get(name)
     }
 
-    /// 构造渲染器、渲染配置与处理器链；会先把模板文件落到 `tmp/tmp`。
+    /// 构造渲染器、渲染配置与处理器链；会先把模板文件落到 `tmp/tmp`，再实例化插件。
+    ///
+    /// # Errors
+    ///
+    /// 模板名不存在（既非自带模板也非插件 `ren_template` 组件），或模板清单解析、模板落盘、
+    /// 渲染器与处理器实例化失败时返回 `Err`；这些均为硬错误，不会降级为警告。
     pub fn renderer(&self, name: &str, tmp: Arc<TempDir>) -> Result<RenderSetup> {
         let template = self.resolve_template(name)?;
         let options = RenderOptions {
@@ -427,13 +448,17 @@ impl PluginManager {
         Ok((renderer, options, processors))
     }
 
-    /// 构造导出器。
+    /// 按名构造导出器：内置名（`lemon` / `arbiter` / `ccr-plus`）或插件 `dumper` 组件名。
+    ///
+    /// # Errors
+    ///
+    /// 名字未命中内置与插件导出器，或插件包/组件解析、wasm 加载失败时返回 `Err`（硬错误）。
     pub fn dumper(&self, name: &str, tmp: Arc<TempDir>) -> Result<Box<dyn Dumper>> {
         let dumper_ref = self.resolve_dumper(name)?;
         crate::plugin::factory::build_dumper(&dumper_ref, self, tmp, &self.assets_dirs)
     }
 
-    /// 按 (类型，组件名) 查找所属包与组件。
+    /// 按 (类型，组件名) 查找所属包与组件
     fn find_component(
         &self,
         kind: ComponentKind,
@@ -446,6 +471,11 @@ impl PluginManager {
     }
 
     /// 解析渲染模板：自带模板名，或插件 `ren_template` 组件名。
+    ///
+    /// # Errors
+    ///
+    /// 名字未注册为任一来源时返回 `Err`（硬错误）；自带模板见
+    /// [`PluginManager::template_from_builtin`]，插件模板见 [`PluginManager::template_from_plugin`]。
     fn resolve_template(&self, name: &str) -> Result<ResolvedTemplate> {
         if self.templates.contains_key(name) {
             return self.template_from_builtin(name);
@@ -459,7 +489,13 @@ impl PluginManager {
         bail!("没有找到模板 {}", name)
     }
 
-    /// 从自带清单（store）构造模板 spec。
+    /// 从自带清单（store）构造模板 spec
+    ///
+    /// 模板路径由 [`PluginManager::discover`] 登记，此处才读取并解析清单。
+    ///
+    /// # Errors
+    ///
+    /// 自带模板文件读取失败或清单 JSON 解析失败时返回 `Err`；自带模板是硬错误，不跳过。
     fn template_from_builtin(&self, name: &str) -> Result<ResolvedTemplate> {
         let builtin = self.templates.get(name).expect("调用方已确认存在");
         let manifest: TemplateManifest = serde_json::from_str(&fs::read_to_string(&builtin.path)?)?;
@@ -484,7 +520,12 @@ impl PluginManager {
         })
     }
 
-    /// 从插件 `ren_template` 组件构造模板 spec。
+    /// 从插件 `ren_template` 组件构造模板 spec
+    ///
+    /// # Errors
+    ///
+    /// 组件不存在或不是 `ren_template`、模板目录越出包目录，或引用的渲染器/处理器未知
+    /// 或来自其他包时返回 `Err`。
     fn template_from_plugin(&self, comp_name: &str) -> Result<ResolvedTemplate> {
         let (package, comp) = self
             .find_component(ComponentKind::RenTemplate, comp_name)
@@ -517,6 +558,10 @@ impl PluginManager {
     }
 
     /// 解析导出器：内置名（`lemon` / `arbiter` / `ccr-plus`），或插件 `dumper` 组件名。
+    ///
+    /// # Errors
+    ///
+    /// 名字既不是内置名也不是插件 `dumper` 组件名时返回 `Err`（硬错误）。
     fn resolve_dumper(&self, name: &str) -> Result<DumperRef> {
         let builtin = match name {
             "lemon" => Some(BuiltinDumper::Lemon),
@@ -536,7 +581,11 @@ impl PluginManager {
         bail!("没有找到导出目标 {}", name)
     }
 
-    /// 从插件 `dumper` 组件构造导出器引用。
+    /// 从插件 `dumper` 组件构造导出器引用
+    ///
+    /// # Errors
+    ///
+    /// 组件不存在或不是 `dumper` 类型时返回 `Err`。
     fn dumper_from_plugin(&self, comp_name: &str) -> Result<DumperRef> {
         let (package, comp) = self
             .find_component(ComponentKind::Dumper, comp_name)
@@ -551,6 +600,10 @@ impl PluginManager {
     }
 
     /// 解析渲染器：内置名（`typst` / `markdown`），或本包 `renderer` 组件名。
+    ///
+    /// # Errors
+    ///
+    /// 名字未知，或指向其他包的组件（跨包引用被禁止）时返回 `Err`。
     fn parse_renderer(&self, s: &str, pkg: &str) -> Result<RendererRef> {
         match s {
             "typst" => return Ok(RendererRef::Builtin(BuiltinRenderer::Typst)),
@@ -570,6 +623,10 @@ impl PluginManager {
     }
 
     /// 解析处理器：内置名，或本包 `processor` 组件名。
+    ///
+    /// # Errors
+    ///
+    /// 名字未知，或指向其他包的组件（跨包引用被禁止）时返回 `Err`。
     fn parse_processor(&self, s: &str, pkg: &str) -> Result<ProcessorRef> {
         if BUILTIN_PROCESSORS.contains(&s) {
             return Ok(ProcessorRef::Builtin(s.to_string()));
@@ -587,7 +644,7 @@ impl PluginManager {
     }
 }
 
-/// 构造插件状态项。
+/// 构造插件状态项
 fn status(
     name: impl Into<String>,
     dir: &Path,
@@ -602,14 +659,14 @@ fn status(
     }
 }
 
-/// 合法的包名 / 组件名（仅 ASCII 字母数字与 `-`/`_`，避免路径分隔与 `..`）。
+/// 判断字符串是否为合法的包名 / 组件名（仅 ASCII 字母数字与 `-`/`_`，避免路径分隔与 `..`）
 pub fn valid_name(s: &str) -> bool {
     !s.is_empty()
         && s.chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
-/// 组件与文件的可访问性校验：有可执行组件必须有 entry；声明的模板目录必须存在。
+/// 校验组件与文件的可访问性：有可执行组件必须有 entry；声明的模板目录必须存在。
 fn component_io_error(manifest: &PluginManifest, pkg_dir: &Path) -> Option<String> {
     let has_executable = manifest.components.iter().any(|c| {
         matches!(
@@ -636,7 +693,14 @@ fn component_io_error(manifest: &PluginManifest, pkg_dir: &Path) -> Option<Strin
 
 /// 校验受信任插件的清单并收集组件，产出可入库的包。
 ///
-/// 失败返回 `(状态名，原因)`，由调用方登记为 `Error` 状态。
+/// 失败返回 `(状态名，原因)`，由调用方登记为 [`PluginState::Error`] 并警告跳过该包，
+/// 不中断其他插件的发现。
+///
+/// # Errors
+///
+/// 包名非法或重复、`version`/`pluginapi` 不可加载、`entry`/`asset_dir` 不存在或越出包目录、
+/// 有可执行组件却未声明 `entry`、模板目录缺失，以及组件名非法、同域重名或与内置/其他插件
+/// 冲突时返回 `Err`。
 fn load_package(
     pkg_dir: &Path,
     dir_name: &str,
@@ -721,7 +785,7 @@ fn collect_components(
     Ok(components)
 }
 
-/// 该 (类型，名字) 是否占用内置保留名。
+/// 判断该 (类型，名字) 是否占用内置保留名
 fn is_builtin_reserved(kind: ComponentKind, name: &str, builtin_template_names: &[String]) -> bool {
     match kind {
         ComponentKind::RenTemplate => builtin_template_names.iter().any(|n| n == name),
@@ -731,7 +795,12 @@ fn is_builtin_reserved(kind: ComponentKind, name: &str, builtin_template_names: 
     }
 }
 
-/// 校验插件声明的 API 版本可被当前宿主加载：major 相同且 minor 不高于宿主。
+/// 校验插件声明的 API 版本可被当前宿主加载：major 相同、minor 不高于宿主，patch 不参与判定。
+///
+/// # Errors
+///
+/// `required` 不是合法的语义化版本、major 与 [`tuack_lib::plugin::PLUGIN_API_VERSION`] 不同，
+/// 或 minor 高于宿主时返回 `Err`；调用方按"跳过该插件并警告"处理。
 pub fn check_plugin_api(required: &str) -> Result<()> {
     let required = semver::Version::parse(required)
         .with_context(|| format!("pluginapi 非法：{required}"))?;

@@ -22,7 +22,7 @@ use crate::ren::processors::extism::ExtismProcessor;
 use crate::ren::renderers::unwrap_template;
 use crate::ren::typst::TypstRenderer;
 
-/// 落模板文件到工作区 `tmp/tmp`，再构造渲染器。
+/// 落模板文件到工作区 `tmp/tmp`，再按 [`ResolvedTemplate`] 实例化 [`Renderer`]。
 pub(crate) fn build_renderer(
     template: &ResolvedTemplate,
     registry: &PluginManager,
@@ -53,7 +53,7 @@ pub(crate) fn build_renderer(
     }
 }
 
-/// 构造处理器（内置或插件）。
+/// 构造 [`RenProcessor`]（内置或插件）
 pub(crate) fn build_processor(
     pref: &ProcessorRef,
     registry: &PluginManager,
@@ -85,7 +85,7 @@ pub(crate) fn build_processor(
     }
 }
 
-/// 构造导出器。
+/// 构造 [`Dumper`]（内置或插件）
 pub(crate) fn build_dumper(
     pref: &DumperRef,
     registry: &PluginManager,

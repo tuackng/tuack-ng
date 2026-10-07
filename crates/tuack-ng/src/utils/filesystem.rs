@@ -6,7 +6,7 @@ use tuack_lib::utils::output::OutputFile;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-/// 将产物写入输出目录（文件流式落盘，空目录直接创建）。
+/// 将 [`OutputFile`] 产物写入输出目录。
 pub fn write_outputs(base: &Path, files: Vec<OutputFile>) -> Result<()> {
     for file in files {
         match file {
@@ -34,6 +34,7 @@ pub fn write_outputs(base: &Path, files: Vec<OutputFile>) -> Result<()> {
     Ok(())
 }
 
+/// 递归复制目录树；目标不存在时创建，Unix 下确保复制出的目录与文件可写。
 pub fn copy_dir_recursive<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> Result<()> {
     let src = src.as_ref();
     let dst = dst.as_ref();

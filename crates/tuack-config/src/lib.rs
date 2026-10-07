@@ -1,3 +1,9 @@
+//! 配置文件（`conf.json`）的数据结构，以及其加载、保存与版本迁移。
+//!
+//! - [`Config`] / [`load_config`]：加载入口，并向上定位当前层级
+//! - [`config`]：contest / day / problem 三层配置结构
+//! - [`current_location`]：当前工作目录对应的配置层级
+
 pub mod config;
 pub mod current_location;
 pub mod prelude;

@@ -69,8 +69,8 @@ impl LatexVisitor {
         base.map(|b| Span::new(b + start, b + end))
     }
 
-    /// 数字 `[start,end)` 是否位于 `tools.hn(` / `tools.comma(` 调用内部。
-    /// 被模板数字工具包装的数字不应触发「数字太长」告警。
+    /// 判断数字 `[start,end)` 是否位于 `tools.hn(` / `tools.comma(` 调用内部。
+    /// 被模板数字工具包装的数字不应触发 "数字太长" 告警。
     fn in_tools_number(text: &str, start: usize, end: usize) -> bool {
         let before = &text[..start];
         let after = &text[end..];
@@ -93,7 +93,7 @@ impl LatexVisitor {
     fn check_latex(&self, latex: &str, base: Option<usize>) -> Vec<LatexProblem> {
         let mut problems: Vec<LatexProblem> = Vec::new();
 
-        // 数学函数名（应该用 \func 而不是 func）
+        // 数学函数名未加反斜杠时告警（`func` 应为 `\func`）
         for cap in MATH_FUNCTIONS.find_iter(latex) {
             let func = cap.as_str();
             let start = cap.start();

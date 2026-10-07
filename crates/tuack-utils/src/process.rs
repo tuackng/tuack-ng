@@ -8,10 +8,10 @@ use sysinfo::{Pid, ProcessesToUpdate, System};
 use crate::prelude::*;
 use tuack_lib::utils::compiler::{ResourceLimits, RunStatus};
 
-/// 监视器专用 runtime：同步代码短时进入异步监督子进程用。
+/// 监视器专用 runtime：供同步代码短时进入异步以监督子进程。
 static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
 
-/// 返回监视器 runtime（首次调用时惰性构建 current_thread runtime）。
+/// 返回监视器 runtime；首次调用时惰性构建单线程（`current_thread`）runtime。
 pub fn monitor_runtime() -> &'static tokio::runtime::Runtime {
     RUNTIME.get_or_init(|| {
         tokio::runtime::Builder::new_current_thread()
@@ -21,7 +21,9 @@ pub fn monitor_runtime() -> &'static tokio::runtime::Runtime {
     })
 }
 
-/// 已 spawn 子进程的 TLE/MLE 监控器。
+/// 子进程 TLE/MLE 监控器：持有 [`ResourceLimits`]，供
+/// [`ProcessSupervisor::supervise_blocking`]/[`ProcessSupervisor::supervise`]
+/// 监督子进程并在超限时终止
 pub struct ProcessSupervisor {
     limits: ResourceLimits,
 }
@@ -31,9 +33,17 @@ impl ProcessSupervisor {
         Self { limits }
     }
 
-    /// 同步入口：将 `cmd` 作为子进程 spawn，并监督其运行。
+    /// 在监视器 runtime 上 `block_on` 一次 [`ProcessSupervisor::supervise`]，供同步调用方使用。
     ///
-    /// 内部在监视器 runtime 上 `block_on`，短暂进入异步执行 `supervise`。
+    /// `cmd` 的 stdin/stdout/stderr 由调用方预设；本函数只负责把它启动为子进程。
+    ///
+    /// # Panics
+    ///
+    /// 在异步上下文中调用时 panic（`block_on` 不能在 runtime 内执行）。
+    ///
+    /// # Errors
+    ///
+    /// 子进程启动失败，或 [`ProcessSupervisor::supervise`] 失败时返回 `Err`。
     pub fn supervise_blocking(
         self,
         cmd: std::process::Command,
@@ -44,7 +54,11 @@ impl ProcessSupervisor {
         })
     }
 
-    /// 监控子进程，返回结束状态、用时和峰值内存。
+    /// 监督一个已 spawn 的子进程，超出时限或内存上限即杀掉；时限判定留 200ms 宽限。
+    ///
+    /// # Errors
+    ///
+    /// 取不到子进程 PID（进程已退出）时返回 `Err`；TLE/MLE 经 [`RunStatus`] 返回，不算错误。
     pub async fn supervise(
         self,
         child: &mut tokio::process::Child,
@@ -80,6 +94,7 @@ impl ProcessSupervisor {
                     }
                 }
             } => {
+                // 监视分支返回即表示命中限制或进程已消失：在此统一杀进程，并按是否超时归类。
                 let _ = child.kill().await;
                 let final_peak = *peak_memory.lock().unwrap();
                 if start.elapsed() > time_limit {
@@ -95,12 +110,10 @@ impl ProcessSupervisor {
                 let elapsed = start.elapsed();
                 let final_peak = *peak_memory.lock().unwrap();
 
-                // 判断是否超时
                 if elapsed > time_limit {
                     return Ok((RunStatus::TimeLimitExceeded, None, Some(final_peak)));
                 }
 
-                // 判断是否内存超限
                 if final_peak > memory_limit {
                     return Ok((RunStatus::MemoryLimitExceeded, None, Some(final_peak)));
                 }

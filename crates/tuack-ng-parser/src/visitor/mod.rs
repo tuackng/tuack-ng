@@ -1,7 +1,5 @@
 //! Visitor 模式：只读遍历 AST。
 //!
-//! 用法与 markdown-ppp 的 `ast_transform::visitor` 一致：
-//!
 //! ```rust
 //! # use tuack_ng_parser::visitor::{VisitWith, Visitor};
 //! # use tuack_ng_parser::ast::{BlockKind, InlineKind};
@@ -25,18 +23,23 @@ use crate::ast::inline::{Image, InlineKind, Link};
 use crate::ast::list::{List, ListItemKind};
 use crate::ast::{Block, Document, Inline, Table, TableCellKind};
 
-/// 只读遍历 AST 的 Visitor。
+/// 只读遍历 AST 的 Visitor
+///
+/// 节点以共享引用传入，`&mut self` 供遍历中累积状态。顺序为源码顺序的深度优先：
+/// 文档 -> 块 -> 块内行内节点 -> 行内子节点。
+///
+/// 每个节点先调用对应的 `visit_*`；重写 `visit_*` 后须自行调用 `walk_*` 才能继续遍历该子树。
 pub trait Visitor {
     fn visit_document(&mut self, _doc: &Document) {
         self.walk_document(_doc);
     }
 
-    /// 访问块节点（携带 span）。
+    /// 访问块节点
     fn visit_block(&mut self, _block: &Block) {
         self.walk_block(_block);
     }
 
-    /// 访问行内节点（携带 span）。
+    /// 访问行内节点
     fn visit_inline(&mut self, _inline: &Inline) {
         self.walk_inline(_inline);
     }
@@ -184,7 +187,7 @@ pub trait Visitor {
     fn walk_image(&mut self, _image: &Image) {}
 }
 
-/// 在文档上运行 Visitor 的便捷接口。
+/// 在文档上运行 [`Visitor`] 的便捷接口
 pub trait VisitWith {
     fn visit_with<V: Visitor>(&self, visitor: &mut V);
 }

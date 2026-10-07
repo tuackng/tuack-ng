@@ -8,6 +8,8 @@ use crate::process::ProcessSupervisor;
 use tuack_lib::data::Reader;
 use tuack_lib::utils::compiler::{IoMode, RunResult, RunSpec, Runner, RunnerManifest};
 
+/// C++ 运行器的 [`Runner`] 实现：用 `g++` 编译源文件后执行；`set_interactive` 后额外
+/// 链接 grader.cpp，并把交互库头文件复制为 `{program_name}.h` 供其包含
 pub struct CppRunner {
     tmp_dir: TempDir,
     source: PathBuf,
@@ -19,6 +21,11 @@ pub struct CppRunner {
 }
 
 impl CppRunner {
+    /// 创建临时目录，并按源文件扩展名从 `compile_args` 取编译选项。
+    ///
+    /// # Errors
+    ///
+    /// 源文件无扩展名，或 `compile_args` 未登记该扩展名时返回 `Err`。
     pub fn new(
         source: impl Into<PathBuf>,
         compile_args: &IndexMap<String, String>,
@@ -151,7 +158,8 @@ impl Runner for CppRunner {
         let mut cmd = StdCommand::new(&program_path);
         cmd.current_dir(&self.tmp_dir);
 
-        // 根据 IO 模式设置 stdin/stdout
+        // IO 模式决定数据读写方式：Stdio 把输入写入文件后接入 stdin、标准输出落文件；
+        // File 由程序自行读写 input_name/output_name，标准流置空
         match &io_mode {
             IoMode::Stdio => {
                 let stdin_path = self.tmp_dir.path().join("pipe_stdin");
@@ -182,9 +190,9 @@ impl Runner for CppRunner {
 
         let (status, time, memory) = ProcessSupervisor::new(limits).supervise_blocking(cmd)?;
 
-        // 读取 stderr
         let stderr = std::fs::read(stderr_path)?;
 
+        // 输出文件不存在视为无输出；其余 IO 错误上抛
         let output: Option<Box<dyn Reader>> = {
             let output_path = match &io_mode {
                 IoMode::Stdio => self.tmp_dir.path().join("pipe_stdout"),

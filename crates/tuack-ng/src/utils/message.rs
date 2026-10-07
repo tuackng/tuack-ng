@@ -2,6 +2,7 @@
 use anstream::{AutoStream, stderr, stdout};
 pub use owo_colors::OwoColorize;
 
+/// 判断标准输出是否启用颜色；各输出宏据此选择彩色符号或纯文本前缀。
 pub fn supports_color() -> bool {
     !matches!(
         anstream::stdout().current_choice(),
@@ -9,6 +10,7 @@ pub fn supports_color() -> bool {
     )
 }
 
+/// 输出宏的公共实现。
 #[macro_export]
 macro_rules! _internal_print {
     ($stream:ident, $($arg:tt)*) => {
@@ -22,6 +24,7 @@ macro_rules! _internal_print {
     };
 }
 
+/// 打印到标准输出。
 #[macro_export]
 macro_rules! msg {
     ($($arg:tt)*) => {
@@ -29,6 +32,7 @@ macro_rules! msg {
     };
 }
 
+/// 打印到标准错误。
 #[macro_export]
 macro_rules! emsg {
     ($($arg:tt)*) => {

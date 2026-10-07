@@ -20,12 +20,12 @@ pub struct ProblemRuntime {
     pub subtasks: BTreeMap<u32, SubtaskItem>,
 }
 
+/// 题目层级配置：配置文件中的静态字段与加载时展开的运行时内容
 #[derive(Debug, Clone, DeserializeMany, SerializeMany)]
 #[serde_many(file = "FileView", full = "FullView")]
 #[serde(file(rename_all = "kebab-case"), full(rename_all = "kebab-case"))]
 pub struct ProblemConfig {
-    /// 配置文件版本，应至少以 `3` 开始
-    /// 降低版本可能会引起迁移
+    /// 配置文件版本：低于 [`CONFIG_VERSION`] 时需迁移，低于 [`CONFIG_MIN_VERSION`] 会被拒绝
     pub version: u32,
     /// 文件夹类型，在此处应为 `problem`
     pub folder: String,
@@ -36,18 +36,18 @@ pub struct ProblemConfig {
     pub name: String,
     /// 题目标题
     pub title: String,
-    /// 时间限制
+    /// 时间限制（秒）
     #[serde(file(rename = "time limit"), full(rename = "time limit"))]
     pub time_limit: f64,
-    /// 空间限制
+    /// 空间限制（支持 `256 MiB` 等人类可读单位）
     #[serde(file(rename = "memory limit"), full(rename = "memory limit"))]
     pub memory_limit: ByteSize,
     /// 数据生成行为
     pub dmk: DmkConfig,
-    /// 数据点参数 (全局部分)
+    /// 数据点参数（全局部分），各数据点会在此基础上覆盖
     #[serde(file(default, skip_serializing_if = "IndexMap::is_empty"))]
     pub args: IndexMap<String, Arg>,
-    /// 交互
+    /// 交互配置，[`ProblemType::Interactive`] 题目必需
     #[serde(file(default, skip_serializing_if = "Option::is_none"))]
     pub interactive: Option<InteractiveConfig>,
     /// 生成器配置
@@ -60,10 +60,10 @@ pub struct ProblemConfig {
     /// 数据 (原始)
     #[serde(full(rename = "orig_data"))]
     pub data: Vec<DataItem>,
-    /// Subtask 配置 (原始)
+    /// Subtask 配置 (原始)，键为 Subtask ID
     #[serde(file(default), full(rename = "orig_subtasks"))]
     pub subtasks: BTreeMap<u32, ScorePolicy>,
-    /// 测试用例
+    /// 测试用例，键为用例名称
     #[serde(file(default, skip_serializing_if = "IndexMap::is_empty"))]
     pub tests: IndexMap<String, TestCase>,
     /// Checker 配置
@@ -92,6 +92,24 @@ pub struct ProblemConfig {
 }
 
 impl ProblemConfig {
+    /// 加载题目层级配置，迁移到当前版本后展开样例、数据与 Subtask 到 [`ProblemRuntime`]
+    ///
+    /// 版本低于 [`CONFIG_VERSION`] 时依次尝试 [`MIGRATERS`] 中登记的迁移器，并在 `ctx`
+    /// 中记录本次加载发生过迁移与各迁移器的通知信息。数据点引用不存在的 Subtask ID 时
+    /// 只向 `ctx` 记录警告，不影响加载结果。
+    ///
+    /// # Errors
+    ///
+    /// - 配置文件无法读取或解析为 JSON；
+    /// - 缺少 `version` 或 `folder` 字段，或 `folder` 不为 `problem`；
+    /// - 版本低于 [`CONFIG_MIN_VERSION`]（Tuack 旧配置）或高于 [`CONFIG_VERSION`]；
+    /// - 不存在从当前版本出发的迁移器；
+    /// - 迁移需人工确认（[`MigraterMetadata::force`] 为 `true`）而 `ctx` 未启用强制迁移；
+    /// - 迁移过程中旧格式的 `samples`、`data` 字段无法解析；
+    /// - [`ProblemType::Interactive`] 题目缺少 `interactive` 配置；
+    /// - 配置文件没有父目录。
+    ///
+    /// [`MigraterMetadata::force`]: crate::config::migrate::base::MigraterMetadata::force
     pub fn load(ctx: &mut LoadContext, config_path: &Path) -> Result<Self> {
         // 读取并验证问题配置文件
         let content = fs::read_to_string(config_path)?;
@@ -284,6 +302,9 @@ impl ProblemConfig {
         Ok(config)
     }
 
+    /// 将本层级配置序列化为 `conf.json` 的 JSON 文本，仅含文件视图字段
+    ///
+    /// 序列化失败时返回 `Err`。
     pub fn save(&self) -> Result<String> {
         Ok(serde_json::to_string_pretty(&AsSerde::<
             ProblemConfig,
@@ -367,10 +388,10 @@ pub struct ValidatorConfigPair {
 pub struct SampleItem {
     /// 样例编号
     pub id: u32,
-    /// 输入文件
+    /// 输入文件，默认为 `{id}.in`
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub input: Option<String>,
-    /// 输出文件
+    /// 输出文件，默认为 `{id}.ans`
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub output: Option<String>,
     /// 原始参数（来自配置文件）
@@ -409,6 +430,7 @@ pub struct ExpandedSampleItem {
     pub dmk: DmkConfig,
 }
 
+/// 数据条目：单个测试点或一组测试点
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum DataItem {
@@ -418,19 +440,20 @@ pub enum DataItem {
     Bundle(BundleDataItem),
 }
 
+/// 单个测试点的原始配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SingleDataItem {
     /// 测试点编号
     pub id: u32,
     /// 测试点分值
     pub score: u32,
-    /// Subtask 编号
+    /// Subtask 编号，默认为 0
     #[serde(default)]
     pub subtask: u32,
-    /// 输入文件
+    /// 输入文件，默认为 `{id}.in`
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub input: Option<String>,
-    /// 输出文件
+    /// 输出文件，默认为 `{id}.ans`
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub output: Option<String>,
     /// 原始参数（来自配置文件）
@@ -442,13 +465,14 @@ pub struct SingleDataItem {
     pub dmk: Option<DmkConfig>,
 }
 
+/// 一组测试点的原始配置，加载时按 `id` 展开为多个测试点
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BundleDataItem {
-    /// 测试点编号
+    /// 测试点编号列表，会展开为多个测试点
     pub id: Vec<i32>,
     /// 测试点分值
     pub score: u32,
-    /// Subtask 编号
+    /// Subtask 编号，默认为 0
     #[serde(default)]
     pub subtask: u32,
     /// 原始参数（来自配置文件）
@@ -460,6 +484,7 @@ pub struct BundleDataItem {
     pub dmk: Option<DmkConfig>,
 }
 
+/// 单个测试点的运行时展开结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExpandedDataItem {
     /// 测试点编号
@@ -480,24 +505,27 @@ pub struct ExpandedDataItem {
     pub dmk: DmkConfig,
 }
 
+/// 展开后的 Subtask 配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubtaskItem {
-    /// 数据点在 data 中的下标
+    /// 数据点在 [`ProblemRuntime::data`] 中的下标
     pub items: Vec<usize>,
-    /// 最大分值
+    /// 该 Subtask 的满分，按 [`SubtaskItem::policy`] 由成员数据点分值计算
     pub max_score: u32,
     /// 评分策略
     pub policy: ScorePolicy,
 }
 
+/// 评测用例：期望得分条件与对应的题解代码
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestCase {
     /// 期望得分条件
     pub expected: ExpectedScore,
-    /// 文件或文件夹路径
+    /// 题解代码路径
     pub path: String,
 }
 
+/// 期望得分条件
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ExpectedScore {
@@ -507,17 +535,19 @@ pub enum ExpectedScore {
     Multiple(Vec<String>),
 }
 
+/// Subtask 得分的聚合方式
 #[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 #[serde(rename_all = "kebab-case")]
 pub enum ScorePolicy {
-    /// 求和（默认）
+    /// 子任务得分取各测试点得分之和
     Sum,
-    /// 求最大值
+    /// 子任务得分取各测试点中的最高分
     Max,
-    /// 求最小值
+    /// 子任务得分取各测试点中的最低分
     Min,
 }
 
+/// 题目类型
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProblemType {
@@ -529,6 +559,7 @@ pub enum ProblemType {
     Interactive,
 }
 
+/// 交互题配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InteractiveConfig {
     /// 交互库路径
@@ -541,6 +572,7 @@ pub struct InteractiveConfig {
     pub dmk_grader: Option<String>,
 }
 
+/// 数据生成行为
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum DmkConfig {

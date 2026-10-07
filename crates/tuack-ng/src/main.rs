@@ -1,3 +1,8 @@
+//! Tuack-NG 命令行入口：定义子命令并分发到各模块。
+//!
+//! 日志与 panic 策略随构建类型变化：调试构建下详细日志默认开启（`--silent` 关闭），panic
+//! 原样抛出；发布构建下详细日志默认关闭（`--verbose` 打开），顶层错误输出后以状态码 1 退出。
+
 use crate::conf::ConfArgs;
 use crate::dmk::DmkArgs;
 use crate::doc::DocArgs;

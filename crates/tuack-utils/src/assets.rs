@@ -2,10 +2,8 @@ use crate::prelude::*;
 use tuack_lib::data::Reader;
 use tuack_lib::utils::asset::AssetProvider;
 
-/// 前端资源提供方：登记 `题目编号 -> 题目路径` 映射，
-/// `load` 按 idx + 相对路径 join 打开文件返回流
-///
-/// 供 ren（图片）与 dump（数据/样例）共用，惰性打开不预载。
+/// 文件系统资源提供方：登记"题目编号 -> 题目路径"映射，供 [`AssetProvider`] 按题目
+/// 编号与相对路径取资源；打开文件返回字节流，惰性打开不预载内容。
 pub struct FsAssetProvider {
     /// 题目编号 -> 题目路径
     dirs: HashMap<u64, PathBuf>,

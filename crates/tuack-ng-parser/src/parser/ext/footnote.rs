@@ -13,7 +13,7 @@ use rushdown::parser::{
 };
 use rushdown::text::{self, Reader as _};
 
-/// 行内脚注引用节点 `[^label]`。
+/// 行内脚注引用节点 `[^label]`
 #[derive(Debug)]
 pub struct FootnoteReferenceNode {
     pub label: String,
@@ -49,7 +49,7 @@ impl From<FootnoteReferenceNode> for KindData {
     }
 }
 
-/// 块级脚注定义节点 `[^label]: 内容`。
+/// 块级脚注定义节点 `[^label]: 内容`
 #[derive(Debug)]
 pub struct FootnoteDefinitionNode {
     pub label: String,

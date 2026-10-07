@@ -4,17 +4,27 @@ use extism_pdk::Error;
 use tuack_lib::ren::ProcessorOutput;
 use tuack_ng_parser::ast::Document;
 
-/// 插件处理器：实现它即可接入 extism，无需接触底层 ABI。
+/// 处理器插件：实现它并用 [`processor!`](crate::processor!) 注册。
+///
+/// 每次调用都会先由 SDK 构造新实例再执行 [`Processor::process`]，实例不跨调用保留。
 pub trait Processor: Send + Sync {
-    /// 构造处理器实例。
+    /// 构造处理器实例：由 SDK 在每次调用开始时调用。
     fn new() -> Self
     where
         Self: Sized;
 
+    /// 由 SDK 在每次调用时调用：接收待处理的文档，返回变换后的 AST 与警告。
+    ///
+    /// # Errors
+    ///
+    /// 实现返回 `Err` 即判定本次处理失败：SDK 不写出任何输出，仅回传错误文本；
+    /// 具体失败条件由实现定义。
     fn process(&self, doc: Document) -> Result<ProcessorOutput, Error>;
 }
 
-/// 注册处理器为 extism 导出函数（默认导出名 `process`）。
+/// 注册处理器（默认导出名 `process`，插件清单按此名引用）。
+///
+/// 输入输出由 SDK 编解码，日志初始化与错误回传也由 SDK 接手；第二个参数可指定自定义导出名。
 #[macro_export]
 macro_rules! processor {
     ($ty:ty) => {

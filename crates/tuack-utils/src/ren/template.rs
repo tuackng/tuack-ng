@@ -22,7 +22,8 @@ fn output_file(problem: &ProblemConfig, file_io: bool) -> Result<String, minijin
     })
 }
 
-/// 处理 sample 函数
+/// 实现模板函数 `sample.text(id)`：把 `base_path/sample/` 下的样例文件渲染为
+/// Markdown 小节；样例配置缺失或文件读取失败时记录警告并返回错误，样例文件不存在时只返回错误
 fn handle_sample(
     sample_id: u32,
     problem: &ProblemConfig,
@@ -84,7 +85,7 @@ fn handle_sample(
         ));
     }
 
-    // 输出部分（修改这里）
+    // 输出部分
     md.push_str(&format!("## 样例 {} 输出\n\n", sample_id));
 
     let output_file = &sample_item.output_path();
@@ -122,7 +123,7 @@ fn handle_sample(
     Ok(md)
 }
 
-/// 处理 sample_file 函数
+/// 实现模板函数 `sample.file(id)`：生成引用选手目录样例文件的语句；样例缺失时仅记录警告
 fn handle_sample_file(
     sample_id: u32,
     problem: &ProblemConfig,
@@ -163,7 +164,21 @@ fn handle_lua_table(
     })
 }
 
-/// 使用模板渲染函数；返回渲染结果与渲染过程中的警告（已带颜色）。
+/// 渲染 MiniJinja 模板源码，返回渲染结果与渲染过程中的警告（已带颜色）。
+///
+/// 上下文变量：`problem`、`day`、`contest`（依次为 [`ProblemConfig`]、[`ContestDayConfig`]、
+/// [`ContestConfig`] 的全量视图），`data_cases`、`sample_cases`（测试点与样例列表）。函数命名空间：
+/// - `sample.text(id)` / `sample.file(id)`：样例小节与样例文件引用
+/// - `tools.int_lg` / `tools.hn(num, style)` / `tools.comma(num)` / `tools.cases(items)`：数字格式化
+/// - `statement.input_file()` / `statement.output_file()`：输入输出方式语句
+/// - `statement.table(path)`：渲染题目目录下 `path` 处的 Lua 表格
+///
+/// `s` 为 `statement` 的别名；题目级 `file_io` 优先于 [`RenParams`] 中的 `file_io`。
+///
+/// # Errors
+///
+/// 模板渲染失败时返回 `Err`：模板语法错误、`sample.text(id)` 的样例配置或样例文件缺失、
+/// `statement.table(path)` 的 Lua 表格渲染失败，或 `tools.cases(items)` 收到非整数项。
 pub fn render_template(
     template: &str,
     problem: &ProblemConfig,

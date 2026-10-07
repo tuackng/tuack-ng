@@ -56,6 +56,7 @@ fn custom_panic_handler(panic_info: &PanicHookInfo, verbose: bool) {
     panic_log!("详见：https://docs.tuack-ng.ink/app/faq/panic.html");
 }
 
+/// 初始化日志系统，返回与日志联动的进度条容器
 fn init_log(verbose: &bool) -> Result<MultiProgress> {
     let format = if *verbose {
         "{d(%Y-%m-%d %H:%M:%S)} | {h({l})} | {t} | {m}{n}"
@@ -68,8 +69,8 @@ fn init_log(verbose: &bool) -> Result<MultiProgress> {
         .encoder(Box::new(PatternEncoder::new(format)))
         .build();
 
-    // debug 模式只让 Tuack 系列库输出 Trace，其余库统一压到 Info
-    // （wasmtime/wiggle/tracing 等经 log 桥接的 Trace 会刷屏）；release 保持 Warn。
+    // verbose 模式只让 Tuack 系列库输出 Trace，其余库统一压到 Info
+    // （wasmtime/wiggle/tracing 等经 log 桥接的 Trace 会刷屏）；非 verbose 时保持 Warn。
     let root_level = if *verbose {
         LevelFilter::Info
     } else {
@@ -239,6 +240,7 @@ fn init_context(
     Ok(())
 }
 
+/// 初始化全局状态：panic 钩子、日志与工程上下文
 pub fn init(verbose: &bool, cli: &crate::Cli) -> Result<()> {
     if !DEBUG {
         let verbose_value = *verbose;

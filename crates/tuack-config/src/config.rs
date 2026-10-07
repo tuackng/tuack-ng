@@ -5,9 +5,12 @@ use crate::current_location::CurrentLocation;
 use crate::prelude::*;
 use path_clean::PathClean;
 
+/// 配置文件名
 pub const CONFIG_FILE_NAME: &str = "conf.json";
 
+/// 当前配置版本
 pub const CONFIG_VERSION: u64 = 7;
+/// 支持的最低配置版本，低于此版本的配置需先迁移
 pub const CONFIG_MIN_VERSION: u64 = 3;
 
 pub mod contest;
@@ -55,12 +58,30 @@ fn is_contest_config(path: &Path) -> Result<bool> {
     }
 }
 
+/// 配置加载结果
 #[derive(Debug, Clone)]
 pub struct Config {
+    /// 顶层比赛配置（含递归加载的比赛日与题目）
     pub config: ContestConfig,
+    /// 当前工作目录对应的配置层级
     pub location: CurrentLocation,
 }
 
+/// 从 `path` 向上查找最近的 `conf.json`，加载整棵配置树并返回 [`Config`]
+///
+/// 加载过程逐级构造 [`ContestConfig`]、[`ContestDayConfig`] 与 [`ProblemConfig`]；
+/// 比赛日或题目加载失败只向 `ctx` 记录错误并继续，不影响其余层级。
+/// `path` 不存在或向上找不到配置文件时返回 `Ok(None)`，不视为错误。
+///
+/// # Errors
+///
+/// - 顶层配置无法读取或解析、缺少 `version` 字段，或版本不在
+///   [`CONFIG_MIN_VERSION`] 与 [`CONFIG_VERSION`] 之间（详见 [`ContestConfig::load`]）；
+/// - 顶层配置的迁移失败，包括不存在对应迁移器、迁移需人工确认
+///   （[`MigraterMetadata::force`] 为 `true`）而 `ctx` 未启用强制迁移；
+/// - 顶层配置路径没有父目录。
+///
+/// [`MigraterMetadata::force`]: crate::config::migrate::base::MigraterMetadata::force
 pub fn load_config(ctx: &mut LoadContext, path: &Path) -> Result<Option<Config>> {
     let config_path = match find_contest_config(path) {
         Ok(path) => path,
@@ -71,7 +92,6 @@ pub fn load_config(ctx: &mut LoadContext, path: &Path) -> Result<Option<Config>>
 
     ctx.enter();
 
-    // 使用 ContestConfig::load 加载主配置
     let mut config = ContestConfig::load(ctx, &config_path)?;
 
     ctx.set_name(format!("[contest] {}", config.name));
@@ -123,7 +143,6 @@ pub fn load_config(ctx: &mut LoadContext, path: &Path) -> Result<Option<Config>>
             };
 
             ctx.set_name(format!("[problem] {}", problemconfig.name));
-            // TODO：总觉得不对劲
             problemconfig.use_pretest = dayconfig.use_pretest.or(config.use_pretest);
             problemconfig.noi_style = dayconfig.noi_style.or(config.noi_style);
             problemconfig.file_io = if problemconfig.problem_type == ProblemType::Interactive {
@@ -160,9 +179,17 @@ pub fn load_config(ctx: &mut LoadContext, path: &Path) -> Result<Option<Config>>
     Ok(Some(Config { config, location }))
 }
 
-/// 将整个配置序列化并保存到文件系统中
+/// 将 [`ContestConfig`] 及其下属比赛日、题目配置序列化后写回各自的 `conf.json`
+///
+/// 比赛根目录由 `base_path` 指定，比赛日与题目配置分别写入
+/// `base_path/<比赛日>/conf.json` 与 `base_path/<比赛日>/<题目>/conf.json`。
+///
+/// # Errors
+///
+/// - `base_path` 不存在；
+/// - 某个比赛日或题目目录不存在；
+/// - 配置序列化失败或写入文件失败。
 pub fn save_config(config: &ContestConfig, base_path: &Path) -> Result<()> {
-    // 检查基础目录是否存在
     if !base_path.exists() {
         bail!("基础目录 {} 不存在", base_path.display());
     }
@@ -176,7 +203,6 @@ pub fn save_config(config: &ContestConfig, base_path: &Path) -> Result<()> {
     for (day_name, day_config) in config.subconfig.iter() {
         let day_path = base_path.join(day_name);
 
-        // 检查比赛日目录是否存在
         if !day_path.exists() {
             bail!("比赛日目录 {} 不存在", day_path.display());
         }
@@ -189,7 +215,6 @@ pub fn save_config(config: &ContestConfig, base_path: &Path) -> Result<()> {
         for (problem_name, problem_config) in day_config.subconfig.iter() {
             let problem_path = day_path.join(problem_name);
 
-            // 检查题目目录是否存在
             if !problem_path.exists() {
                 bail!("题目目录 {} 不存在", problem_path.display());
             }

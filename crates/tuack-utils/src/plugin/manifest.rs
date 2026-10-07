@@ -2,14 +2,16 @@
 
 use crate::prelude::*;
 
-/// 插件包清单（`plugin.toml`）。
+/// 插件包清单（`plugin.toml`）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginManifest {
     /// 包名（全局唯一）
     pub name: String,
     /// 插件版本（语义化版本）
     pub version: String,
-    /// 插件 API 版本（语义化版本，必填）：宿主只加载 major 相同、minor 不高于自身的插件
+    /// 插件 API 版本（语义化版本）
+    ///
+    /// 宿主只加载 major 相同、minor 不高于自身的插件，patch 不参与判定
     pub pluginapi: String,
     #[serde(default)]
     pub description: Option<String>,
@@ -33,7 +35,7 @@ pub struct PluginManifest {
     pub components: Vec<Component>,
 }
 
-/// 一个组件。
+/// 一个组件
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Component {
     /// 组件名（同类型内包内唯一）
@@ -42,7 +44,7 @@ pub struct Component {
     pub body: ComponentBody,
 }
 
-/// 组件体，按 `type` 区分。
+/// 组件体，按 `type` 区分：可执行组件为 [`ExecutableComponent`]，模板组件为 [`RenTemplateComponent`]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ComponentBody {
@@ -72,11 +74,12 @@ impl ComponentBody {
     }
 }
 
-/// wasm 可执行组件（dumper / renderer / processor）。
+/// wasm 可执行组件（dumper / renderer / processor）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutableComponent {
     /// 导出函数名
     pub func: String,
+    /// 是否启用 WASI（插件据此访问宿主映射的工作区）
     #[serde(default)]
     pub wasi: bool,
     /// 允许执行的宿主可执行文件白名单
@@ -84,7 +87,7 @@ pub struct ExecutableComponent {
     pub command: Vec<String>,
 }
 
-/// `ren_template` 组件。
+/// `ren_template` 组件
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenTemplateComponent {
     /// 模板目录（包内相对路径）；省略即空目录

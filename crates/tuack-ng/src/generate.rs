@@ -85,7 +85,7 @@ pub struct GenArgs {
 fn gen_contest(args: GenStatementArgs) -> Result<()> {
     let current_dir = std::env::current_dir()?;
 
-    // 查找 scaffold/contest 目录（在程序上下文中的列表中第一个存在的）
+    // 查找 scaffold/contest 目录（资源目录列表中第一个存在的）
     let scaffold_path = find_in_scaffold("contest", true)?;
 
     for contest_name in &args.name {
@@ -130,7 +130,7 @@ fn gen_day(args: GenStatementArgs) -> Result<()> {
         bail!("无效的配置文件");
     }
 
-    // 查找 scaffold/day 目录（在程序上下文中的列表中第一个存在的）
+    // 查找 scaffold/day 目录（资源目录列表中第一个存在的）
     let scaffold_path = find_in_scaffold("day", true)?;
 
     for day_name in &args.name {
@@ -189,7 +189,7 @@ fn gen_problem(args: GenStatementArgs) -> Result<()> {
         bail!("无效的配置文件");
     }
 
-    // 查找 scaffold/problem 目录（在程序上下文中的列表中第一个存在的）
+    // 查找 scaffold/problem 目录（资源目录列表中第一个存在的）
     let scaffold_path = find_in_scaffold("problem", true)?;
 
     for problem_name in &args.name {
@@ -359,6 +359,7 @@ fn gen_data(args: GenConfirmArgs) -> Result<()> {
                 })
                 .collect();
 
+            // 整除余数补给最后一个测试点，保证各测试点分数之和恰为 100
             if let Some(last) = data.last_mut()
                 && let DataItem::Single(item) = last
             {
@@ -455,6 +456,7 @@ fn gen_sample(args: GenConfirmArgs) -> Result<()> {
 }
 
 fn gen_code(args: GenConfirmArgs) -> Result<()> {
+    // 跳过数据、样例、检查器、生成器、临时文件等非题解文件
     let user_skip = Regex::new(r"(^|/|\\)(data|down|sample|pre|val|.*validate.*|gen|chk|checker|report|check.*|make_data|data_maker|data_make|make|dmk|generate|generator|makedata|spj|judge|interactive|tables|tmp|cp|copy|mv|move|rm|remove|.*\.tmp|.*\.temp|temp|.*\.test|.*\.dir)(\..*)?$").unwrap();
     fn find_code(path: &PathBuf, user_skip: &Regex) -> Result<Vec<(PathBuf, bool)>> {
         if user_skip.is_match(&dunce::canonicalize(path)?.to_string_lossy()) {
@@ -610,7 +612,7 @@ fn find_in_scaffold(name: &str, is_dir: bool) -> Result<PathBuf> {
     for assets_dir in &context.assets_dirs {
         let path = assets_dir.join("scaffold").join(name);
         if path.exists() {
-            // 根据需求检查类型
+            // 按 is_dir 校验条目类型
             if (is_dir && path.is_dir()) || (!is_dir && path.is_file()) {
                 return Ok(path);
             }

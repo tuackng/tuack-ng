@@ -2,6 +2,7 @@ use rand::rngs::StdRng;
 
 use crate::prelude::*;
 
+/// 对 128 位种子做雪崩混合，输出 64 位。
 pub fn mix_u128_complex(seed: u128) -> u64 {
     let mut low = seed as u64;
     let mut high = (seed >> 64) as u64;
@@ -18,6 +19,7 @@ pub fn mix_u128_complex(seed: u128) -> u64 {
     low ^ high
 }
 
+/// 创建以当前微秒时间为种子的随机数生成器。
 pub fn gen_rnd() -> Result<StdRng> {
     use rand::SeedableRng;
     use rand::rngs::StdRng;

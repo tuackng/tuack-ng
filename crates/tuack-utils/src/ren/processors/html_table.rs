@@ -5,7 +5,11 @@ use std::fmt::Write;
 use tuack_ng_parser::ast::inline::InlineKind;
 use tuack_ng_parser::ast::{Alignment, Table, TableCell};
 
-/// 将 Table 转换为 HTML 表格字符串
+/// 将 [`Table`] 转换为 HTML：首行作 `<thead>`，其余行作 `<tbody>`，按列套用对齐方式
+///
+/// # Errors
+///
+/// 单元格内含引用式链接或脚注引用时返回 `Err`（无法表示为 HTML）。
 pub fn table_to_html(table: &Table) -> Result<String> {
     if table.rows.is_empty() {
         return Ok(String::new());
@@ -71,7 +75,7 @@ fn build_row(
     Ok(())
 }
 
-/// 将 Inline 元素写入到节点中
+/// 把行内元素写入节点；引用式链接与脚注引用无法表示为 HTML，返回错误
 fn write_inlines<'a>(mut node: Node<'a>, inlines: &[tuack_ng_parser::Inline]) -> Result<Node<'a>> {
     for inline in inlines {
         match &inline.value {

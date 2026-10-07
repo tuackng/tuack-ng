@@ -13,7 +13,9 @@ pub struct SupportLanguage {
 /// 比赛日起止时间
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DateInfo {
+    /// 起始时间 `[年，月，日，时，分，秒]`
     pub start: [u32; 6],
+    /// 结束时间 `[年，月，日，时，分，秒]`
     pub end: [u32; 6],
 }
 
@@ -25,7 +27,7 @@ pub struct RenParams {
     pub file_io: bool,
 }
 
-/// 渲染配置，包含渲染所需的全部信息。
+/// 渲染配置：比赛级元信息与渲染参数。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenConfig {
     pub title: String,
@@ -49,7 +51,7 @@ pub struct Problem {
     pub images: IndexMap<PathBuf, PathBuf>,
 }
 
-/// 渲染文档，渲染器的输入。
+/// 渲染文档：[`Renderer`](crate::ren::Renderer) 的输入。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderDocument {
     pub config: RenConfig,

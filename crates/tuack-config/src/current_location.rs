@@ -5,8 +5,8 @@ pub enum CurrentLocation {
     None,
     /// 配置文件根目录
     Root,
-    /// 比赛日配置文件
+    /// 比赛日配置文件，参数为比赛日目录名
     Day(String),
-    /// 赛题配置文件
+    /// 题目配置文件，参数为比赛日目录名与题目目录名
     Problem(String, String),
 }

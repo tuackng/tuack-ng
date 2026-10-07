@@ -10,22 +10,22 @@ use tuack_ng_parser::ast::list::{List, ListBulletKind, ListItemKind, ListKind};
 use tuack_ng_parser::ast::{Alignment, Block, Document, Table, TableCell, TableCellKind};
 use tuack_ng_parser::span::Spanned;
 
-/// 无 span 的块。
+/// 构造无 span 的块。
 pub fn b(kind: BlockKind) -> Block {
     Spanned::plain(kind)
 }
 
-/// 无 span 的行内。
+/// 构造无 span 的行内。
 pub fn i(kind: InlineKind) -> tuack_ng_parser::Inline {
     Spanned::plain(kind)
 }
 
-/// 无 span 的表格单元格。
+/// 构造无 span 的表格单元格。
 pub fn cell(content: Vec<tuack_ng_parser::Inline>) -> TableCell {
     Spanned::plain(TableCellKind::new(content))
 }
 
-/// 带合并信息的表格单元格。
+/// 构造带合并信息的表格单元格。
 pub fn cell_with(
     content: Vec<tuack_ng_parser::Inline>,
     colspan: Option<usize>,
@@ -40,7 +40,7 @@ pub fn cell_with(
     })
 }
 
-/// 无 span 的列表项。
+/// 构造无 span 的列表项。
 pub fn li(blocks: Vec<Block>) -> Spanned<ListItemKind> {
     Spanned::plain(ListItemKind::new(blocks))
 }

@@ -4,20 +4,28 @@ use extism_pdk::Error;
 use tuack_lib::dump::DumpDocument;
 use tuack_lib::utils::output::OutputFile;
 
-/// 插件导出器：实现它即可接入 extism。
+/// 导出器插件：实现它并用 [`dumper!`](crate::dumper!) 注册。
 ///
-/// `dump` 接收可序列化的导出文档，返回产物文件列表与导出警告
-/// （与宿主侧 `tuack_lib::dump::Dumper` 同形）；SDK 把文件列表转成可回传的
-/// [`OutputSpec`](crate::OutputSpec)，由宿主落盘。
+/// [`Dumper::dump`] 接收导出文档，返回产物文件列表与导出警告；每次调用都会先由 SDK 构造
+/// 新实例，实例不跨调用保留。
 pub trait Dumper: Send + Sync {
+    /// 构造导出器实例：由 SDK 在每次调用开始时调用。
     fn new() -> Self
     where
         Self: Sized;
 
+    /// 由 SDK 在每次调用时调用。
+    ///
+    /// # Errors
+    ///
+    /// 实现返回 `Err` 即判定本次导出失败：SDK 不上报任何产物或警告，仅回传错误文本；
+    /// 具体失败条件由实现定义。
     fn dump(&self, doc: DumpDocument) -> Result<(Vec<OutputFile>, Vec<String>), Error>;
 }
 
-/// 注册导出器为 extism 导出函数（默认导出名 `dump`）。
+/// 注册导出器（默认导出名 `dump`，插件清单按此名引用）。
+///
+/// 输入输出由 SDK 编解码，日志初始化与错误回传也由 SDK 接手；第二个参数可指定自定义导出名。
 #[macro_export]
 macro_rules! dumper {
     ($ty:ty) => {

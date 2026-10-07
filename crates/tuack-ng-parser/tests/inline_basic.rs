@@ -80,7 +80,7 @@ fn inline_link_angle_bracket_url() {
 
 #[test]
 fn inline_link_nested_image() {
-    // GitHub badge pattern
+    // GitHub badge 模式
     assert_blocks(
         "[![userstyles](https://img.shields.io/badge/userstyles-green)](https://userstyles.world/user/Paul-16098)",
         vec![b(para(vec![link(
@@ -160,7 +160,7 @@ fn image_with_attributes_and_title() {
 
 #[test]
 fn autolink() {
-    // <https://...> 分转为 Autolink variant
+    // <https://...> 解析为 Autolink 变体
     assert_blocks(
         "<https://example.com>",
         vec![b(para(vec![i(InlineKind::Autolink(
@@ -179,7 +179,7 @@ fn inline_code() {
 
 #[test]
 fn hard_line_break() {
-    // 行尾两个空格 → 硬换行
+    // 行尾两个空格 -> 硬换行
     let doc = tuack_ng_parser::parse("a  \nb");
     match &doc.blocks[0].value {
         BlockKind::Paragraph(inlines) => {
@@ -206,7 +206,7 @@ fn hard_line_break_node() {
 
 #[test]
 fn soft_break_node() {
-    // 普通换行 → SoftBreak 节点
+    // 普通换行 -> SoftBreak 节点
     let doc = tuack_ng_parser::parse("a\nb");
     let has_softbreak = match &doc.blocks[0].value {
         BlockKind::Paragraph(inlines) => inlines

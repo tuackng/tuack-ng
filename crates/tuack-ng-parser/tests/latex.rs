@@ -8,7 +8,7 @@ use tuack_ng_parser::ast::{BlockKind, InlineKind};
 
 #[test]
 fn latex_inline() {
-    // `$...$` → 行内 Latex
+    // `$...$` -> 行内 Latex
     assert_blocks(
         "公式 $x^2$ 内联",
         vec![b(para(vec![
@@ -36,7 +36,7 @@ fn latex_inline_multiple() {
 
 #[test]
 fn latex_display_block() {
-    // 跨行 `$$\n...\n$$` → LatexBlock（行间）
+    // 跨行 `$$\n...\n$$` -> LatexBlock（行间）
     let doc = tuack_ng_parser::parse("$$\nE = mc^2\n$$\n");
     match &doc.blocks[0].value {
         BlockKind::LatexBlock(content) => assert_eq!(content, "E = mc^2\n"),

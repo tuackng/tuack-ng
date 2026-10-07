@@ -28,7 +28,7 @@ pub enum Target {
     Sample,
 }
 
-/// 前端展示状态 (评测状态 + 编译失败)
+/// 展示状态：由 [`TestCaseStatus`] 映射而来，另加编译失败（CE）
 #[derive(Debug, Clone)]
 #[allow(clippy::upper_case_acronyms)]
 pub(crate) enum DisplayStatus {
@@ -38,7 +38,9 @@ pub(crate) enum DisplayStatus {
     TLE,
     MLE,
     UKE,
+    /// 文件错误：输出文件不存在
     FE,
+    /// 部分正确，携带 0-100 的比例分
     PC(f64),
     CE,
 }
@@ -58,7 +60,7 @@ impl From<&TestCaseStatus> for DisplayStatus {
     }
 }
 
-// 记录测试用例结果
+/// 单个测试点的评测结果
 #[derive(Debug)]
 pub struct IndividualTestCaseResult {
     pub test_case_id: u32,
@@ -71,7 +73,7 @@ pub struct IndividualTestCaseResult {
     pub message: Option<String>,
 }
 
-// 记录题目测试结果
+/// 单个测试者（题解）在其全部测试点上的汇总结果
 #[derive(Debug)]
 pub struct ProblemTestResult {
     pub tester_name: String,
@@ -121,7 +123,6 @@ fn check_test_case(test_case: &TestCase, actual_score: u32) -> bool {
     true
 }
 
-// 将测试结果写入 CSV
 fn write_results_to_csv(results: Vec<ProblemTestResult>, csv_path: &Path) -> Result<()> {
     let mut wtr = Writer::from_path(csv_path)?;
 
@@ -136,9 +137,7 @@ fn write_results_to_csv(results: Vec<ProblemTestResult>, csv_path: &Path) -> Res
         "信息",
     ])?;
 
-    // 写入所有测试者的结果
     for result in &results {
-        // 写入每个测试用例的结果
         for test_case_result in &result.test_case_results {
             let message = test_case_result
                 .message
@@ -159,7 +158,7 @@ fn write_results_to_csv(results: Vec<ProblemTestResult>, csv_path: &Path) -> Res
             ])?;
         }
 
-        // 给这个测试者写入总分
+        // 追加该测试者的总分行（测试点 ID 留空，状态为 TOTAL）
         wtr.write_record(&[
             result.tester_name.clone(),
             "".to_string(),                 // 测试点 ID
@@ -362,7 +361,7 @@ pub fn test_problem(
             }
         }
 
-        // 编译失败 -> 前端直接记录 CE，不进入评测
+        // 编译失败 -> 记录 CE，不进入评测
         if let Err(e) = runner.prepare() {
             msg_item!("CE".yellow().bold(), "编译错误");
             msg_error!("{}", e);
@@ -435,7 +434,7 @@ pub fn test_problem(
 
             let status_str = status_color(&display_status);
 
-            // 正常判题:SPJ 信息取第一行附在结果行后;无信息则为 None
+            // 非 UKE 时取判题消息首行附在结果行后；无信息则为 None
             let info_line: Option<String> = if matches!(display_status, DisplayStatus::UKE) {
                 None
             } else {
@@ -523,7 +522,7 @@ pub fn test_problem(
 
         case_test_pb.finish_and_clear();
 
-        // 判分 (前端，按 target 选择策略)
+        // 判分：按 target 选择评分策略
         let report = match target {
             Target::Data => DataPolicy.score(problem_config, &data_items, &results),
             Target::Sample => SamplePolicy.score(problem_config, &data_items, &results),
@@ -650,7 +649,7 @@ pub fn main(args: TestArgs) -> Result<()> {
             );
             for (day_idx, (_, day_config)) in config.subconfig.iter().enumerate() {
                 day_pb.set_message(format!("处理第 {}/{} 天", day_idx + 1, total_days));
-                test_day(day_config, args.target, false)?; // 复用 test_day
+                test_day(day_config, args.target, false)?;
                 day_pb.inc(1);
             }
             day_pb.finish_with_message("测试完成！");

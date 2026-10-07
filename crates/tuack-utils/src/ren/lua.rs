@@ -4,35 +4,34 @@ use super::tools;
 
 use mlua::{AnyUserData, Function, Lua, LuaSerdeExt, Table, UserData, Value};
 
-/*
--- 配置
-tng.config.contest
-tng.config.day
-tng.config.problem
-tng.config.sample_cases
-tng.config.data_cases
+// `tng` 命名空间清单
+//
+// -- 配置
+// tng.config.contest
+// tng.config.day
+// tng.config.problem
+// tng.config.sample_cases
+// tng.config.data_cases
+//
+// -- 与 jinja 一致的
+// tng.tools.int_lg
+// tng.tools.comma
+// tng.tools.hn
+// tng.tools.cases
+//
+// -- md wrapper
+// tng.tools.italic
+// tng.tools.bold
+// tng.tools.strikethrough
+// tng.tools.inline_code
+// tng.tools.link(text, url)
+// tng.tools.autolink
+// tng.tools.inline_latex
+//
+// -- 构建 table 对象
+// tng.table
 
--- 与 jinja 一致的
-tng.tools.int_lg
-tng.tools.comma
-tng.tools.hn
-tng.tools.cases
-
--- md wrapper
-tng.tools.italic
-tng.tools.bold
-tng.tools.strikethrough
-tng.tools.inline_code
-tng.tools.link(text, url)
-tng.tools.autolink
-tng.tools.inline_latex
-
--- 构建 table 对象
-tng.table
-
-*/
-
-// 提取为独立函数
+/// 实现 Lua 侧 `sample_cases.map` / `data_cases.map`：对表中每个值调用 `func`，收集为 1 起始的新表
 fn map_table(lua: &Lua, tbl: Table, func: Function) -> mlua::Result<Table> {
     let result = lua.create_table()?;
 
@@ -166,6 +165,7 @@ fn build_tools(lua: &mut Lua) -> mlua::Result<mlua::Table> {
     ])
 }
 
+/// 由 Lua 侧 `tng.table` 构造、待渲染为 Markdown 的表格
 #[derive(Clone)]
 struct TngTable {
     pub headers: Vec<String>,
@@ -212,6 +212,7 @@ impl TngTable {
     }
 }
 
+/// 待按行合并的列号（1 起始），可写单列或列号列表
 #[derive(Clone, Deserialize)]
 #[serde(untagged)]
 enum MergeCol {
@@ -219,6 +220,7 @@ enum MergeCol {
     Multiple(Vec<usize>),
 }
 
+/// 合并规则：`merge_row` 为真时，把该列中与上一行相同的单元格替换为 `^`
 #[derive(Clone, Deserialize)]
 struct MergeRule {
     pub col: MergeCol,
@@ -283,6 +285,11 @@ fn apply_merge_rules(data: &[Vec<String>], rules: &[MergeRule]) -> Vec<Vec<Strin
     result
 }
 
+/// 构造 [`TngTable`]：校验 `align` 与各行列数同 `headers` 一致，再应用合并规则
+///
+/// # Errors
+///
+/// `align` 或某一行的列数与 `headers` 不一致，或字段缺失、类型无法转换为对应 Rust 类型时返回 `Err`。
 fn create_tng_table(lua: &Lua, tbl: Table) -> Result<TngTable> {
     let headers: Vec<String> = tbl.get("headers")?;
     let align: Vec<AlignRule> = lua.from_value(tbl.get("align")?)?;
@@ -322,11 +329,8 @@ fn build_namespace(
     lua.globals().set(
         "tng",
         lua.create_table_from(vec![
-            // tng.config
             ("config", Value::Table(tng_config)),
-            // tng.tools
             ("tools", Value::Table(tng_tools)),
-            // tng.table
             (
                 "table",
                 Value::Function(
@@ -338,6 +342,13 @@ fn build_namespace(
 
     Ok(())
 }
+
+/// 在独立 Lua 环境中执行 `path` 处的表格脚本，把脚本返回的表格对象渲染为 Markdown
+///
+/// # Errors
+///
+/// 读取 `path` 失败、Lua 脚本执行出错、脚本未返回 `tng.table` 构造的表格对象，
+/// 或表格本身校验失败时返回 `Err`。
 pub fn render_template(
     path: &Path,
     problem: &ProblemConfig,

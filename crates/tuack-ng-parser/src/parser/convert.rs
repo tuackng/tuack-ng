@@ -1,4 +1,4 @@
-//! rushdown AST → 自建 AST 的转换器。
+//! rushdown 解析树到本 crate AST 的内部转换。
 
 use std::collections::VecDeque;
 
@@ -11,7 +11,7 @@ use crate::ast::{
 };
 use crate::span::{Span, Spanned};
 
-/// 将 rushdown 解析出的 AST 转换为自建结构。
+/// 把 rushdown 的解析树转换为本 crate 的 AST。
 pub(crate) fn convert(arena: &Arena, doc_ref: NodeRef, source: &str) -> Document {
     let mut ctx = Ctx {
         arena,
@@ -541,7 +541,7 @@ impl<'a> Ctx<'a> {
     /// 从 TableCell 节点的 Block source 取精确内容区间。
     ///
     /// rushdown 解析表格时把 trim 后的单元格内容存为 Block source（col_seg），
-    /// 精确覆盖内容本身（不含 `| ` 分隔符）。空单元格 source 为空 → None。
+    /// 精确覆盖内容本身（不含 `| ` 分隔符）。空单元格 source 为空 -> None。
     fn table_cell_span(&self, cell_node: NodeRef) -> Option<Span> {
         // 通过节点 type_data 的 Block 访问 source（列单元格内容区间）。
         let type_data = self.arena[cell_node].type_data();

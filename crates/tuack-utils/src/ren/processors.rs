@@ -8,13 +8,13 @@ pub mod extism;
 pub mod html_table;
 pub mod loj;
 
-/// 内置处理器：`loj_table`。
+/// 内置处理器：`loj_table`
 pub struct LojTableProcessor;
 
-/// 内置处理器：`html_table`。
+/// 内置处理器：`html_table`
 pub struct HtmlTableProcessor;
 
-/// 内置处理器：`uoj_title`。
+/// 内置处理器：`uoj_title`
 pub struct UojTitleProcessor;
 
 impl RenProcessor for LojTableProcessor {
@@ -79,7 +79,7 @@ impl RenProcessor for UojTitleProcessor {
     }
 }
 
-/// 按名字构造内置处理器；未知名字返回 `None`。
+/// 构造内置处理器；`name` 取 `loj_table`/`html_table`/`uoj_title`，未知时返回 `None`
 pub fn builtin_processor(name: &str) -> Option<Box<dyn RenProcessor>> {
     match name {
         "loj_table" => Some(Box::new(LojTableProcessor)),

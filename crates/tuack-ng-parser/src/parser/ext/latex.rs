@@ -1,6 +1,4 @@
 //! LaTeX 公式扩展：行内 `$...$` 与块级 `$$...$$`。
-//!
-//! 自写实现，rushdown 本身没有 math/latex 解析器。
 
 use core::fmt;
 
@@ -11,7 +9,7 @@ use rushdown::parser::{
 };
 use rushdown::text::{self, Reader as _};
 
-/// 行内 LaTeX 扩展节点。
+/// 行内 LaTeX 扩展节点
 #[derive(Debug)]
 pub struct LatexNode {
     pub content: String,
@@ -271,7 +269,6 @@ pub fn latex_parser_extension() -> impl ParserExtension {
     })
 }
 
-/// 空选项。
 #[derive(Debug, Clone, Default)]
 pub struct NoParserOptions;
 impl ParserOptions for NoParserOptions {}

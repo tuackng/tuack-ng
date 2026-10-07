@@ -6,6 +6,8 @@ use crate::prelude::*;
 use tuack_lib::data::Reader;
 use tuack_lib::utils::testlib::{Validator, ValidatorResult};
 
+/// C++ Validator 的 [`Validator`] 实现：把源文件与依赖复制到临时目录后用 `g++` 编译；
+/// 校验时把输入流经 stdin 喂给二进制，以退出码判有效，stderr 作为失败信息
 pub struct CppValidator {
     tmp_dir: TempDir,
     source: PathBuf,
@@ -16,6 +18,12 @@ pub struct CppValidator {
 }
 
 impl CppValidator {
+    /// 创建临时目录，并按源文件扩展名从 `compile_args` 取编译选项（未登记时用默认
+    /// `-O2 -std=c++17`）。
+    ///
+    /// # Errors
+    ///
+    /// 源文件无扩展名时返回 `Err`。
     pub fn new(
         source: impl Into<PathBuf>,
         compile_args: &IndexMap<String, String>,

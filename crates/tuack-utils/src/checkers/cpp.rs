@@ -6,6 +6,8 @@ use crate::prelude::*;
 use tuack_lib::data::Reader;
 use tuack_lib::utils::testlib::Checker;
 
+/// C++ Checker 的 [`Checker`] 实现：把源文件与依赖复制到临时目录后用 `g++` 编译，
+/// 再按 testlib 约定调用二进制（`输入 输出 答案 报告` 加 `-appes`）
 pub struct CppChecker {
     tmp_dir: TempDir,
     source: PathBuf,
@@ -16,6 +18,12 @@ pub struct CppChecker {
 }
 
 impl CppChecker {
+    /// 创建临时目录，并按源文件扩展名从 `compile_args` 取编译选项（未登记时用默认
+    /// `-O2 -std=c++17`）。
+    ///
+    /// # Errors
+    ///
+    /// 源文件无扩展名时返回 `Err`。
     pub fn new(
         source: impl Into<PathBuf>,
         compile_args: &IndexMap<String, String>,

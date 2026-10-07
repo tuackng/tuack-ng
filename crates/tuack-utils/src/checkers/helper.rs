@@ -17,7 +17,13 @@ struct XmlResult {
     text: Option<String>,
 }
 
-/// 解析 testlib checker 的 XML 结果
+/// 解析 testlib checker 的 XML 结果，返回 [`JudgeResult`] 与消息文本；解析成功的分数会被裁剪
+/// 到 `[0, 100]`。
+///
+/// # Errors
+///
+/// XML 解析失败、`outcome` 取值未知，或 `partially-correct`/`points` 的分数缺失或无法
+/// 解析为数字时返回 `Err`。
 pub fn parse_result(xml_str: &str) -> Result<(JudgeResult, String)> {
     let xml_str = xml_str.trim();
     let xml_result: XmlResult = from_str(xml_str)?;
@@ -44,6 +50,10 @@ pub fn parse_result(xml_str: &str) -> Result<(JudgeResult, String)> {
 }
 
 /// 将输入流流式写入临时文件，供 SPJ 程序按路径读取。
+///
+/// # Errors
+///
+/// 创建临时文件或写入内容失败时返回 `Err`。
 pub fn write_temp(reader: &mut dyn Reader, prefix: &str) -> Result<NamedTempFile> {
     let mut tmp = NamedTempFile::with_prefix(prefix)?;
     std::io::copy(reader, &mut tmp)?;

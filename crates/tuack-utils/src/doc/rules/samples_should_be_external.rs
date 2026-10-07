@@ -37,9 +37,13 @@ fn extract_text(inlines: &[Inline]) -> String {
         .collect()
 }
 
+/// 样例标题的识别结果
 enum SampleHeading {
+    /// 输入标题；参数为标题写明的编号，未写明则为 None
     Input(Option<usize>),
+    /// 输出标题（不携带编号）
     Output,
+    /// 非样例标题
     None,
 }
 
@@ -81,6 +85,7 @@ fn classify_block(block: &Block) -> SampleHeading {
     }
 }
 
+/// 从文档中抽取出的样例，`input`/`output` 为待写入 `sample/N.in`/`sample/N.ans` 的内容
 pub struct ExportedSample {
     input: String,
     output: String,
@@ -92,6 +97,8 @@ pub struct ExportedSample {
 pub struct SamplesShouldBeExternal;
 
 impl SamplesShouldBeExternal {
+    /// 扫描文档，按"输入标题 + 代码块 + 输出标题 + 代码块"四块一组把内部样例抽取为外部文件内容。
+    /// 原处替换为 `sample.text(N)` 引用；返回改写后的文档与抽取出的 [`ExportedSample`]。
     fn format(
         &self,
         doc: Document,

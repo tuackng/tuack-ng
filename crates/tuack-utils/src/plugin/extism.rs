@@ -1,5 +1,6 @@
-//! extism 宿主共享上下文与日志 host 函数（渲染器在 `ren::extism`、导出器在 `dump::extism`、
-//! 处理器在 `ren::processors::extism`）。
+//! extism 宿主共享上下文与日志 host 函数（渲染器在 [`ren::extism`](crate::ren::extism)、
+//! 导出器在 [`dump::extism`](crate::dump::extism)、处理器在
+//! [`ren::processors::extism`](crate::ren::processors::extism)）。
 
 use extism::UserData;
 
@@ -7,7 +8,7 @@ use crate::prelude::*;
 
 pub mod context;
 
-/// 各类型插件共用的日志 host 函数（插件经 `log` 门面转发而来）。
+/// 构造各类型插件共用的日志 host 函数（插件经 `log` 门面转发而来）
 pub(crate) fn log_import() -> extism::Function {
     extism::Function::new(
         "plugin_log",

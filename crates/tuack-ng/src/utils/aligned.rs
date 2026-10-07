@@ -1,7 +1,7 @@
 use owo_colors::OwoColorize;
 use unicode_width::UnicodeWidthStr;
 
-/// 一组按最大标签宽度对齐的键值行。
+/// 一组按最大标签宽度对齐的键值行
 #[derive(Default)]
 pub struct AlignedFields {
     rows: Vec<(String, String)>,

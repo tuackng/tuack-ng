@@ -161,7 +161,7 @@ fn list_item_blank_line_separated_paragraphs() {
 
 #[test]
 fn list_nested_with_indent() {
-    // 4 空格缩进 → 嵌套列表（列表项内段落 a + 嵌套 List b）。
+    // 4 空格缩进 -> 嵌套列表（列表项内段落 a + 嵌套 List b）。
     let doc = tuack_ng_parser::parse("- a\n    - b\n");
     let list = match &doc.blocks[0].value {
         BlockKind::List(list) => list,

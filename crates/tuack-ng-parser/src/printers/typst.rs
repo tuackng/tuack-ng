@@ -1,12 +1,9 @@
 //! Typst 渲染器。
 //!
-//! 输出格式对齐 markdown-ppp 的 `typst_printer`：
-//! - 段落包 `#par[...]`，Text 包 `#"..."`（转义 `\`/`"`/`\t`/`\n`/`\r`）
+//! 主要输出形式：
+//! - 段落包裹 `#par[...]`，文本包裹 `#"..."`。
 //! - 表格 `#figure(table(columns: (...), align: (...), cells))`
-//! - 合并表格用 `table.cell(colspan:, rowspan:)`
-//!
-//! 表格**处理合并**：colspan/rowspan 通过 `table.cell(colspan:, rowspan:)` 输出，
-//! `removed_by_extended_table` 的单元格跳过。
+//! - 合并单元格用 `table.cell(colspan:, rowspan:)` 输出；`removed_by_extended_table` 的标记单元格跳过
 
 use crate::ast::block::{BlockKind, CodeBlockKind, ContainerParam, HeadingKind, SetextHeading};
 use crate::ast::inline::InlineKind;
@@ -14,7 +11,7 @@ use crate::ast::list::ListKind;
 use crate::ast::{Block, Document, Inline};
 use std::collections::HashMap;
 
-/// 渲染为 Typst 字符串。
+/// 渲染为 Typst 字符串
 pub fn render_typst(doc: &Document) -> String {
     let footnotes = collect_footnotes(doc);
     let mut out = String::new();
@@ -28,7 +25,7 @@ pub fn render_typst(doc: &Document) -> String {
     out
 }
 
-/// 收集所有脚注定义：label -> blocks（typst 引用点内联定义内容）。
+/// 收集脚注定义，label -> blocks：渲染引用时把定义内容内联到引用点。
 fn collect_footnotes(doc: &Document) -> HashMap<String, Vec<Block>> {
     let mut map = HashMap::new();
     for block in &doc.blocks {
@@ -80,7 +77,7 @@ fn render_block(block: &BlockKind, footnotes: &HashMap<String, Vec<Block>>, out:
                     if j > 0 {
                         out.push(' ');
                     }
-                    // ppp：列表项内段落不包 `#par`，直接渲染 inlines。
+                    // 列表项内段落不包裹 `#par`，直接渲染 inlines。
                     if let BlockKind::Paragraph(inlines) = &b.value {
                         render_inlines(inlines, footnotes, out);
                     } else {
@@ -113,7 +110,6 @@ fn render_block(block: &BlockKind, footnotes: &HashMap<String, Vec<Block>>, out:
             // figure 输出 `#figure(caption:)[..]`，其他 kind 解包渲染内容。
             if c.kind == "figure" {
                 out.push_str("#figure");
-                // caption 参数。
                 let mut args = Vec::new();
                 if let Some(ContainerParam::KeyValue(_, caption)) =
                     c.params.iter().find(|p| p.key() == "caption")
@@ -291,7 +287,7 @@ fn render_inline(inline: &InlineKind, footnotes: &HashMap<String, Vec<Block>>, o
     }
 }
 
-/// 渲染表格：对齐 ppp 的 `#figure(table(...))` 格式。
+/// 渲染表格：输出 `#figure(table(...))` 格式。
 fn render_table(
     table: &crate::ast::Table,
     footnotes: &HashMap<String, Vec<Block>>,
@@ -307,7 +303,7 @@ fn render_table(
     out.push_str("#figure(table(\n");
     out.push_str(&format!("  columns: ({columns}),\n"));
 
-    // align: 对齐 ppp —— 无对齐时全部 `center + horizon`，有对齐时用实际值。
+    // align: 无对齐时全部 `center + horizon`，有对齐时用实际值。
     if table.alignments.is_empty() {
         out.push_str("  align: (center + horizon),\n");
     } else {
@@ -333,7 +329,7 @@ fn render_table(
             }
             let mut content = String::new();
             render_inlines(&cell.value.content, footnotes, &mut content);
-            // 收集 >1 的 colspan/rowspan（对齐 ppp 逻辑）。
+            // 收集 >1 的 colspan/rowspan。
             let mut cell_parts = Vec::new();
             if let Some(colspan) = cell.value.colspan {
                 if colspan > 1 {

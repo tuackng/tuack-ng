@@ -52,14 +52,14 @@ const INDEX_URL: &str =
 
 /// 市场来源标记：安装时由宿主写入，供更新时识别非同源插件。
 const FROM_MARKET_MARKER: &str = ".from-market";
-/// 市场索引体大小上限。
+/// 市场索引体大小上限
 const MAX_INDEX_BYTES: u64 = 1024 * 1024;
-/// 插件归档下载与解压体积上限。
+/// 插件归档下载与解压体积上限
 const MAX_ARCHIVE_BYTES: u64 = 512 * 1024 * 1024;
-/// 插件归档条目数上限。
+/// 插件归档条目数上限
 const MAX_ENTRIES: usize = 10_000;
 
-/// 访问市场的 HTTP agent：强制 HTTPS，设置连接超时与整体超时。
+/// 构造访问市场的 HTTP agent：强制 HTTPS，设置连接超时与整体超时。
 fn agent(global: Duration) -> ureq::Agent {
     ureq::config::Config::builder()
         .timeout_global(Some(global))
@@ -104,6 +104,7 @@ pub(super) fn main(args: MarketArgs) -> Result<()> {
     }
 }
 
+/// 拉取并解析市场索引。
 fn fetch_market() -> Result<MarketplaceIndex> {
     let mut response = agent(Duration::from_secs(15))
         .get(INDEX_URL)
@@ -208,7 +209,6 @@ fn market_update(name: Option<String>, all: bool, force: bool) -> Result<()> {
 
     let mut targets: Vec<&MarketplacePlugin> = Vec::new();
     if all {
-        // 遍历已安装插件，不在市场中的跳过
         for plugin_name in &installed {
             match index.plugins.iter().find(|p| &p.name == plugin_name) {
                 Some(plugin) => targets.push(plugin),

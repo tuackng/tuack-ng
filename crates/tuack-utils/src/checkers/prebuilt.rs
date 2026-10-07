@@ -5,7 +5,8 @@ use crate::prelude::*;
 use tuack_lib::data::Reader;
 use tuack_lib::utils::testlib::Checker;
 
-/// 使用预编译的 Checker（如 `assets/checkers/normal`）
+/// 预编译 Checker 的 [`Checker`] 实现：不编译，`prepare` 只校验二进制存在，
+/// `validate` 的调用约定同 [`CppChecker`](crate::checkers::cpp::CppChecker)
 pub struct PrebuiltChecker {
     binary: PathBuf,
 }

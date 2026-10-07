@@ -68,7 +68,7 @@ pub struct DmkArgs {
     validate: Option<bool>,
 }
 
-/// 数据点生成结果（展示状态）。
+/// 数据点生成结果（展示状态）
 #[derive(Debug)]
 pub enum DmkResult {
     /// 生成数据
@@ -79,7 +79,7 @@ pub enum DmkResult {
     Reset,
     /// 跳过
     Skip,
-    /// 建造空文件
+    /// 创建空文件
     Empty,
     /// 失败
     Fail(anyhow::Error),
@@ -128,7 +128,7 @@ fn report_status(id: u32, kind: &str, status: &DmkResult) {
     }
 }
 
-/// 生成单个数据点的输入，返回展示状态。
+/// 生成单个数据点的输入，返回 [`DmkResult`] 展示状态。
 fn gen_input(
     session: &mut DmkSession<'_>,
     item: &FsTestData<'_>,
@@ -137,6 +137,8 @@ fn gen_input(
 ) -> Result<DmkResult> {
     let exists = item.input_path().exists();
 
+    // 仅当 regen/reset，或 gen 且输入缺失，且配置要求生成输入时才生成；
+    // 否则已有文件记为跳过，缺失文件写空文件兜底
     if !((!matches!(action, DmkCommand::Gen) || !exists) && item.gen_input()) {
         if exists {
             return Ok(DmkResult::Skip);
@@ -151,7 +153,7 @@ fn gen_input(
     }
 }
 
-/// 用标程生成单个数据点的输出，返回展示状态。
+/// 用标程生成单个数据点的输出，返回 [`DmkResult`] 展示状态。
 fn gen_output(
     session: &mut DmkSession<'_>,
     item: &FsTestData<'_>,
@@ -159,6 +161,8 @@ fn gen_output(
 ) -> Result<DmkResult> {
     let exists = item.output_path().exists();
 
+    // 仅当 regen/reset，或 gen 且输出缺失，且配置要求生成输出时才生成；
+    // 否则已有文件记为跳过，缺失文件写空文件兜底
     if !((!matches!(action, DmkCommand::Gen) || !exists) && item.gen_output()) {
         if exists {
             return Ok(DmkResult::Skip);
@@ -186,7 +190,7 @@ fn load_seeds(target_dir: &Path) -> BTreeMap<u32, u64> {
     }
 }
 
-/// 合并种子：`force`（Reset）时强制重新生成，否则只补缺失
+/// 合并种子：`force`（Reset）时强制重新生成，否则只补缺失（已有种子保留）
 fn merge_seeds(seeds: &mut BTreeMap<u32, u64>, items: &[FsTestData], force: bool) -> Result<()> {
     let mut rng = gen_rnd()?;
     for item in items {
@@ -222,7 +226,7 @@ fn find_std(problem: &ProblemConfig) -> Result<PathBuf> {
     bail!("未找到标程文件")
 }
 
-/// 构造标程运行器
+/// 构造标程运行器 [`Runner`]
 fn build_std_runner(
     std_path: &Path,
     day_config: &ContestDayConfig,

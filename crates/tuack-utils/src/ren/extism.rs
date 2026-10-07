@@ -18,10 +18,10 @@ use crate::plugin::extism::context::{
     AssetStreams, PluginContext, READONLY_ASSET_MOUNT, common_imports, specs_to_outputs,
 };
 
-/// 一个基于 extism 的渲染器插件。
+/// 一个基于 extism 的渲染器插件
 ///
-/// 插件声明 `wasi` 时，宿主把临时目录映射为插件内的 `/`（`/out` 为产物工作区）；
-/// 插件返回产物描述列表，资产流由宿主直接取用（host-to-host）。
+/// 宿主把临时目录映射为插件内的 `/`（`/out` 为产物工作区），插件声明 `wasi` 时才启用
+/// WASI 文件访问；插件返回产物描述列表，资产流由宿主直接取用（host-to-host）。
 pub struct ExtismRenderer {
     plugin: Mutex<extism::Plugin>,
     function: String,
@@ -30,8 +30,14 @@ pub struct ExtismRenderer {
 }
 
 impl ExtismRenderer {
+    /// 加载 wasm 插件并校验其导出函数存在，同时准备 WASI 工作目录
+    ///
     /// `asset_dir` 为插件随包资源目录，映射到只读 WASI 路径 `/assets`；
     /// `command` 为允许执行的宿主命令白名单。
+    ///
+    /// # Errors
+    ///
+    /// 创建临时子目录失败、extism 加载插件失败，或插件未导出 `function` 时返回 `Err`。
     pub fn new(
         wasm: Vec<u8>,
         function: String,

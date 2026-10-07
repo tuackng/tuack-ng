@@ -1,3 +1,20 @@
+//! Arbiter 导出器。
+//!
+//! 仅在 Linux 上导出（Arbiter 只有 Linux 版本），输出为 Arbiter 的竞赛目录：
+//!
+//! ```text
+//! main/
+//!   setup.cfg                       竞赛配置
+//!   team.info                       空文件
+//!   day<场次号>.info                场次信息
+//!   task<场次号>_<题号>.info        题目配置
+//!   data/ evaldata/                 数据文件（各一份）
+//!   filter/<题目名>_e               比较器（由本导出器编译生成）
+//!   players/ result/ final/ tmp/    空目录占位（players/ 与 result/ 含 day<场次号> 子目录）
+//! down/<场次名>/<题目名>/           样例与附加文件
+//! ```
+//!
+//! 各限制见 [`ArbiterDumper`]。
 use std::process::Command;
 
 use crate::prelude::*;
@@ -19,6 +36,8 @@ fn build_info(info: &[(String, String)]) -> String {
     content
 }
 
+/// Arbiter 导出器：比较器优先编译题目自带 SPJ，否则编译 `assets/sample/default_arbiter.cpp`；
+/// 不支持打包评测，含多个测试点的子任务按均分计分。
 pub struct ArbiterDumper {
     tmp: Arc<TempDir>,
     assets_dirs: Vec<PathBuf>,
@@ -29,7 +48,7 @@ impl ArbiterDumper {
         Self { tmp, assets_dirs }
     }
 
-    /// 生成 filter 可执行文件：有自定义 SPJ 则编译 checker（经 handle 取源码），
+    /// 生成 filter 可执行文件：有自定义 SPJ 则编译 checker（经 assets 读取源码），
     /// 否则编译默认比较器源码；编译失败时 `None`（不产生文件），资源缺失则失败
     fn build_filter(
         &self,
@@ -115,6 +134,9 @@ impl ArbiterDumper {
 }
 
 impl Dumper for ArbiterDumper {
+    /// 仅在 Linux 上可用；题目既无自定义 SPJ 又找不到默认比较器源码时返回 `Err`。
+    /// 含多个测试点的子任务按均分计分、比较器编译失败降级为不产出 filter，二者均记入警告；
+    /// 其余失败条件见 [`Dumper::dump`]。
     fn dump(
         &self,
         doc: &tuack_lib::dump::DumpDocument,

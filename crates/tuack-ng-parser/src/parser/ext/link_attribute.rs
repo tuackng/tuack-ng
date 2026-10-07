@@ -1,7 +1,4 @@
 //! `![](){width=.. height=..}` 图片/链接属性扩展。
-//!
-//! 自写实现，对齐 markdown-ppp 的 `image.rs` 语义：`{width=.. height=..}` 存为
-//! 图片属性。注册为 inline 扩展节点，紧跟在 link/image 之后触发。
 
 use core::fmt;
 
@@ -66,7 +63,7 @@ fn parse_braced_attrs(input: &str) -> Option<std::collections::HashMap<String, S
     Some(attrs)
 }
 
-/// link-attribute inline parser。
+/// link-attribute 行内解析器
 #[derive(Debug, Default)]
 pub struct LinkAttributeParser {}
 
@@ -124,7 +121,6 @@ pub fn link_attribute_parser_extension() -> impl ParserExtension {
     })
 }
 
-/// 空选项。
 #[derive(Debug, Clone, Default)]
 pub struct NoParserOptions;
 impl ParserOptions for NoParserOptions {}

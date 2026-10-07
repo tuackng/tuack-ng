@@ -22,7 +22,7 @@ pub struct ScoreReport {
     pub full_score: u32,
 }
 
-/// 判分策略，解释一组执行结果，并返回判分结果。
+/// 判分策略：解释一组执行结果，并返回 [`ScoreReport`]。
 pub trait ScorePolicy {
     fn score(
         &self,
@@ -32,7 +32,7 @@ pub trait ScorePolicy {
     ) -> ScoreReport;
 }
 
-/// 正式数据判分：按配置计算
+/// 正式数据判分：分组与计分模型取自 `config.runtime.subtasks`
 pub struct DataPolicy;
 
 impl ScorePolicy for DataPolicy {
@@ -47,7 +47,7 @@ impl ScorePolicy for DataPolicy {
     }
 }
 
-/// 样例判分：加和计算
+/// 样例判分：忽略 `config.runtime.subtasks`，所有样例并入 0 号组按 Sum 计分
 pub struct SamplePolicy;
 
 impl ScorePolicy for SamplePolicy {
@@ -71,7 +71,7 @@ impl ScorePolicy for SamplePolicy {
     }
 }
 
-/// 按位置配对 `data_items` 与 `results`,产出 `(subtask, earned)` 元组。
+/// 按位置配对 `data_items` 与 `results`，产出 `(subtask, earned)` 元组。
 ///
 /// 单点得分 = 归一化比例 * 满分，四舍五入。
 fn pair_scores(data_items: &[FsTestData], results: &[TestCaseResult]) -> Vec<(u32, u32)> {

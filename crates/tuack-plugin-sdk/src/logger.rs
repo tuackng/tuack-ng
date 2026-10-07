@@ -12,6 +12,7 @@ impl log::Log for PluginLogger {
     }
 
     fn log(&self, record: &log::Record) {
+        // 级别数值是插件与宿主 `plugin_log` 的约定，修改须两端同步
         let level = match record.level() {
             log::Level::Error => 4,
             log::Level::Warn => 3,
@@ -19,13 +20,14 @@ impl log::Log for PluginLogger {
             log::Level::Debug => 1,
             log::Level::Trace => 0,
         };
+        // SAFETY: plugin_log 由宿主注册，签名与 host.rs 中 extern 块的声明一致
         let _ = unsafe { plugin_log(level, record.args().to_string()) };
     }
 
     fn flush(&self) {}
 }
 
-/// 初始化插件日志：注册日志门面并把记录转发到宿主。
+/// 初始化插件日志：注册日志门面并把记录转发到宿主；重复调用只生效一次。
 #[doc(hidden)]
 pub fn __init_logger() {
     static INIT: std::sync::OnceLock<()> = std::sync::OnceLock::new();

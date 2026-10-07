@@ -8,7 +8,7 @@ use rushdown::parser::Parser;
 
 use crate::ast::Document;
 
-/// 解析 Markdown 文本为自建 AST。
+/// 解析 Markdown 文本为 [`Document`]。
 pub fn parse(source: &str) -> Document {
     let parser = Parser::with_extensions(
         rushdown::parser::Options::default(),

@@ -1,3 +1,15 @@
+//! Lemon 导出器。
+//!
+//! 输出为 Lemon 的竞赛目录：
+//!
+//! ```text
+//! <场次名>.cdf                      竞赛配置
+//! data/<题目名>/<题目名><编号>.in   输入
+//! data/<题目名>/<题目名><编号>.ans  答案
+//! data/<题目名>/chk[.exe]           自定义 SPJ（由本导出器编译生成）
+//! ```
+//!
+//! `.cdf` 中的测试点路径相对 `data/`。评分策略与编译选项的限制见 [`LemonDumper`]。
 use serde_json::{Map, Value, json};
 use std::process::Command;
 
@@ -42,6 +54,7 @@ const COMPILER_MAP: &[(&str, &str)] = &[
     ("java", "javac"),
 ];
 
+/// 取语言名对应的 Lemon 编译器名（如 `cpp` -> `g++`）
 fn compiler_for_lang(lang: &str) -> Result<&'static str> {
     COMPILER_MAP
         .iter()
@@ -54,6 +67,9 @@ fn case_rel_path(prob_name: &str, case_id: u32, ext: &str) -> String {
     format!("{prob_name}/{prob_name}{case_id}.{ext}")
 }
 
+/// Lemon 导出器
+///
+/// 仅支持求和与取最小两种评分策略；编译选项只能按 Lemon 的 default 导出，需用户手动调整。
 pub struct LemonDumper {
     tmp: Arc<TempDir>,
 }
@@ -65,6 +81,8 @@ impl LemonDumper {
 }
 
 impl Dumper for LemonDumper {
+    /// 子任务使用 [`ScorePolicy::Max`]、题目为 [`ProblemType::Interactive`]、参赛语言无对应
+    /// 编译器，或自定义 SPJ 编译失败时返回 `Err`；其余失败条件见 [`Dumper::dump`]。
     fn dump(
         &self,
         doc: &tuack_lib::dump::DumpDocument,

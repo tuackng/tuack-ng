@@ -13,12 +13,19 @@ use datajson::{DataJson, DateInfo, Problem, SupportLanguage};
 /// Typst 渲染器
 pub struct TypstRenderer {
     tmp: Arc<TempDir>,
-    /// 模板/工作目录（WASI 工作区 `/tmp`），由外部预先落好模板文件
+    /// 模板/工作目录（WASI 工作区 `/tmp`），构造前须已放入模板文件
     work_dir: PathBuf,
 }
 
 impl TypstRenderer {
-    /// 校验编译环境；模板文件须已落到 `tmp/tmp`。
+    /// 创建渲染器并校验 `typst` 命令与模板文件
+    ///
+    /// 调用前模板文件须已放入临时目录的 `tmp` 子目录。
+    ///
+    /// # Errors
+    ///
+    /// `typst` 命令不可用（未安装、不在 `PATH` 或 `--version` 执行失败），
+    /// 或模板目录缺少 `main.typ`/`utils.typ` 时返回 `Err`。
     pub fn new(tmp: Arc<TempDir>) -> Result<Self> {
         let work_dir = tmp.path().join("tmp");
         Self::check_typst_env(&work_dir)?;

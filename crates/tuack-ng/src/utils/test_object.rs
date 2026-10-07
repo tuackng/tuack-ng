@@ -1,6 +1,9 @@
 use crate::prelude::*;
 
 /// 从字符串解析测试点，返回匹配的测试点列表。
+///
+/// `s` 忽略大小写，支持 `all`、逗号分隔的 ID 与闭区间（如 `1,3-5`）；未匹配到任何测试点的
+/// ID 被忽略，起始 ID 大于结束 ID 则报错。
 pub fn parse_test_object<T: Clone>(
     s: &str,
     all_items: &[T],
@@ -35,7 +38,6 @@ pub fn parse_test_object<T: Clone>(
                 bail!("起始 ID 不能大于结束 ID: {}", part);
             }
 
-            // 遍历查找在范围内的测试点
             for item in all_items.iter() {
                 if id_of(item) >= start && id_of(item) <= end {
                     result.push(item.clone());
@@ -46,7 +48,6 @@ pub fn parse_test_object<T: Clone>(
                 .parse::<u32>()
                 .with_context(|| anyhow!("无效的测试点 ID: {}", part))?;
 
-            // 遍历查找匹配的测试点
             if let Some(item) = all_items.iter().find(|item| id_of(item) == id) {
                 result.push(item.clone());
             }

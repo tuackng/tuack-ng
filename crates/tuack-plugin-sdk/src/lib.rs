@@ -1,8 +1,12 @@
-//! tuack-ng 处理器/渲染器/导出器插件的 Rust SDK。
+//! tuack-ng 处理器 / 渲染器 / 导出器插件的 Rust SDK。
 //!
-//! 处理器插件实现 [`Processor`]，渲染器插件实现 [`Renderer`]，导出器插件实现
-//! [`Dumper`]；分别用 [`processor`] / [`renderer`] / [`dumper`] 宏注册为
-//! extism 导出函数，JSON 编解码（字节载荷走 msgpack）、内存与错误处理均由 SDK 接管。
+//! - [`Processor`] / [`processor!`](crate::processor!)：处理题目 AST
+//! - [`Renderer`] / [`renderer!`](crate::renderer!)：渲染题面
+//! - [`Dumper`] / [`dumper!`](crate::dumper!)：导出到评测系统
+//!
+//! 实现对应 trait 并用宏注册后，编解码、内存与错误处理均由 SDK 接管。
+//!
+//! # Examples
 //!
 //! 一个最小处理器插件（编译目标 `wasm32-wasip1`）：
 //! ```ignore
@@ -59,7 +63,8 @@ pub use output::__to_specs;
 pub use processor::Processor;
 pub use renderer::Renderer;
 
-/// 将错误回传给宿主（供 [`processor`] / [`renderer`] / [`dumper`] 宏内部使用）。
+/// 将错误回传给宿主（供 [`processor!`](crate::processor!) /
+/// [`renderer!`](crate::renderer!) / [`dumper!`](crate::dumper!) 宏内部使用）。
 #[doc(hidden)]
 pub fn __report_error(e: &extism_pdk::Error) {
     let err = format!("{:?}", e);

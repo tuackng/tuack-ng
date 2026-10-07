@@ -1,12 +1,4 @@
-/// 计算一个数的以 10 为底的对数的整数部分
-///
-/// # 参数
-/// - `num`: f64 - 要计算的数字
-///
-/// # 返回值
-/// - f64 - 对数的整数部分，特殊情况：
-///   - 0 -> -inf
-///   - 负数 -> NaN
+/// 返回以 10 为底的对数的整数部分；`0` 得 `-inf`，负数得 `NaN`
 pub fn int_lg(num: f64) -> f64 {
     if num == 0.0 {
         return f64::NEG_INFINITY;
@@ -33,13 +25,7 @@ pub fn int_lg(num: f64) -> f64 {
     n as f64
 }
 
-/// 将整数格式化为带有逗号分隔的字符串
-///
-/// ## 参数
-/// - `num`: i64 - 要格式化的整数
-///
-/// ## 返回值
-/// - String - 格式化后的字符串
+/// 用逗号千分位分隔整数
 pub fn comma(num: i64) -> String {
     if num < 0 {
         return format!("-{}", comma(-num));
@@ -64,19 +50,12 @@ pub fn comma(num: i64) -> String {
     result.chars().rev().collect()
 }
 
-/// 科学计数法的系数部分（如 `1.5 × 10^3` 中的 `1.5`）
+/// 返回科学计数法的系数部分（如 `1.5 \times 10^3` 中的 `1.5`）
 fn sci_coeff(int_num: i64, n: i32) -> String {
     format!("{}", int_num as f64 / 10_f64.powi(n))
 }
 
-/// 格式化数字为适合阅读的表示形式
-///
-/// ## 参数
-/// - `num`: f64 - 要格式化的数字
-/// - `style`: Option<&str> - 格式化样式：
-///   - Some("x") - 科学记数法
-///   - Some(",") - 逗号分隔形式
-///   - None - 自动选择最紧凑的形式
+/// 格式化数字：`style` 为 `"x"` 用 LaTeX 科学记数法，`","` 用千分位分隔，`None` 时自动选择
 pub fn hn(num: f64, style: Option<&str>) -> String {
     if num == 0.0 {
         return "0".to_string();
@@ -129,13 +108,9 @@ pub fn hn(num: f64, style: Option<&str>) -> String {
     }
 }
 
-/// 将数字范围转换为紧凑的表示形式
+/// 把升序整数列表压缩为区间表示，返回 `$` 包裹的 LaTeX 公式
 ///
-/// ## 参数
-/// - `items`: &[i32] - 有序的数字列表
-///
-/// ## 返回值
-/// - String - 格式化后的范围字符串，以$开头和结尾
+/// 连续区间长度大于 2 时写作 `a \sim b`；空列表返回 `$$`
 pub fn cases(items: &[i32]) -> String {
     if items.is_empty() {
         return "$$".to_string();

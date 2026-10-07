@@ -1,4 +1,4 @@
-//! Markdown 渲染器。
+//! AST 渲染器。
 
 pub mod markdown;
 pub mod typst;

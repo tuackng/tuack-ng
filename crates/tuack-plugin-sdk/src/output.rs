@@ -5,8 +5,15 @@ use tuack_lib::plugin::OutputSpec;
 use tuack_lib::utils::output::OutputFile;
 
 /// 把产物文件列表转成可回传的 [`OutputSpec`]：资产保留句柄（host-to-host），
-/// 其余内容写入 WASI 工作区 `/out/<path>`（供 [`crate::renderer`] / [`crate::dumper`]
-/// 宏内部使用）。
+/// 其余内容写入 WASI 工作区 `/out/<path>`（供 [`renderer!`](crate::renderer!) /
+/// [`dumper!`](crate::dumper!) 宏内部使用）。
+///
+/// # Errors
+///
+/// 写入文件产物失败时返回 [`Error`]：无法创建 `/out` 下的目录、无法创建目标文件或拷贝
+/// 字节失败（`std::fs` / `std::io` 错误）；资产与空目录产物不经文件系统，不会失败。
+///
+/// 文件产物要求插件清单声明 `wasi = true`，否则插件内没有 WASI 文件访问。
 #[doc(hidden)]
 pub fn __to_specs(files: Vec<OutputFile>) -> Result<Vec<OutputSpec>, Error> {
     let mut specs = Vec::new();

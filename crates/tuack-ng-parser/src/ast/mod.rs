@@ -1,6 +1,5 @@
-//! 自建 Markdown AST。
+//! Markdown AST 节点定义。
 //!
-//! 结构与 markdown-ppp 的 AST 形状对齐，便于迁移渲染器与 Visitor；
 //! 每个节点通过 [`crate::span::Spanned`] 携带可选的源码位置。
 
 pub mod block;
@@ -22,7 +21,6 @@ pub use inline::{
 pub use list::{List, ListBulletKind, ListItem, ListItemKind, ListKind};
 pub use table::{Alignment, Table, TableCell, TableCellKind};
 
-/// 根节点。
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Document {

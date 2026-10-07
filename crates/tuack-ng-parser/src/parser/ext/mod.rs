@@ -1,4 +1,4 @@
-//! 自写扩展：fenced-div、link-attribute 与 latex。
+//! Markdown 扩展解析器。
 
 pub mod fenced_div;
 pub mod footnote;
@@ -7,7 +7,7 @@ pub mod link_attribute;
 
 use rushdown::parser::ParserExtension;
 
-/// 默认启用的扩展集合。
+/// 返回默认启用的扩展集合。
 ///
 /// 不使用 `gfm()` 全家桶，而是分别注册需要的 GFM 扩展：
 /// 任务列表（`gfm_task_list_item`）不在支持范围内，故不注册。

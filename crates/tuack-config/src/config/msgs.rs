@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use debug_tree::{TreeBuilder, TreeConfig, TreeSymbols};
 
-/// 是否支持彩色输出（stderr/stdout 非 `Never`）
+/// 判断标准输出当前是否输出彩色：其颜色选择不为 `Never` 时返回 `true`
 fn supports_color() -> bool {
     !matches!(
         anstream::stdout().current_choice(),
@@ -9,6 +9,7 @@ fn supports_color() -> bool {
     )
 }
 
+/// 加载消息级别
 #[derive(Clone, Debug, Copy)]
 pub enum LoadMessageLevel {
     Warn,
@@ -16,6 +17,7 @@ pub enum LoadMessageLevel {
     Note,
 }
 
+/// 单条加载消息
 #[derive(Clone, Debug)]
 pub struct LoadMessage {
     pub level: LoadMessageLevel,
@@ -23,7 +25,6 @@ pub struct LoadMessage {
 }
 
 impl LoadMessage {
-    // 创建警告消息
     pub fn warn(message: impl Into<String>) -> Self {
         Self {
             level: LoadMessageLevel::Warn,
@@ -31,7 +32,6 @@ impl LoadMessage {
         }
     }
 
-    // 创建错误消息
     pub fn error(message: impl Into<String>) -> Self {
         Self {
             level: LoadMessageLevel::Error,
@@ -39,7 +39,6 @@ impl LoadMessage {
         }
     }
 
-    // 创建提示消息
     pub fn note(message: impl Into<String>) -> Self {
         Self {
             level: LoadMessageLevel::Note,
@@ -48,10 +47,17 @@ impl LoadMessage {
     }
 }
 
+/// 某个配置层级的加载消息集合
 #[derive(Clone, Debug, Default)]
 pub struct LoadMessages {
+    /// 该层级在加载信息树中显示的分支标题，形如 `[contest] xxx`
+    ///
+    /// 仅用于展示（见 [`LoadMessages::render_tree`]），不参与层级查找：由调用方拼接，
+    /// `[...]` 为层级类型（`contest`/`day`/`problem`），`xxx` 为该层的配置名；根层级留空。
     pub name: String,
+    /// 该层级产生的消息
     pub messages: Vec<LoadMessage>,
+    /// 子层级的消息集合
     pub sub: Vec<LoadMessages>,
 }
 
@@ -144,12 +150,16 @@ impl LoadMessages {
     }
 }
 
+/// 配置加载上下文，记录层级消息与迁移状态
 #[derive(Clone, Debug, Default)]
 pub struct LoadContext {
+    /// 根层级的加载消息
     pub root: LoadMessages,
     current_path: Vec<usize>,
+    /// 本次加载是否发生过版本迁移
     pub migrated: bool,
     force_migrate: bool,
+    /// 迁移过程中产生的提示信息，键为原版本号
     pub migrated_notices: IndexMap<i32, &'static str>,
 }
 
@@ -172,6 +182,12 @@ impl LoadContext {
         }
     }
 
+    /// 创建允许执行强制迁移的加载上下文
+    ///
+    /// 迁移器的 [`MigraterMetadata::force`] 为 `true` 时，迁移涉及 `conf.json` 之外的改动，
+    /// 配置加载默认拒绝自动执行；只有通过本构造器创建的上下文才授权执行这类迁移。
+    ///
+    /// [`MigraterMetadata::force`]: crate::config::migrate::base::MigraterMetadata::force
     pub fn new_force_migrate() -> Self {
         Self {
             force_migrate: true,
@@ -179,10 +195,12 @@ impl LoadContext {
         }
     }
 
+    /// 是否已授权执行强制迁移
     pub fn force_migrate(&self) -> bool {
         self.force_migrate
     }
 
+    /// 进入新的子层级，之后记录的消息归属该层级
     pub fn enter(&mut self) {
         let idx = {
             let node = self.current();
@@ -196,6 +214,7 @@ impl LoadContext {
         self.current().name = name.into();
     }
 
+    /// 回到上一层，恢复进入前的归属层级
     pub fn ret(&mut self) {
         self.current_path.pop();
     }

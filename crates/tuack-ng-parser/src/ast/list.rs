@@ -6,7 +6,7 @@ use crate::span::Spanned;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-/// 列表。
+/// 列表
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct List {
@@ -14,21 +14,21 @@ pub struct List {
     pub items: Vec<ListItem>,
 }
 
-/// 列表项节点别名。
+/// 列表项节点别名（[`ListItemKind`] + 可选源码 span）
 pub type ListItem = Spanned<ListItemKind>;
 
-/// 列表种类。
+/// 列表种类
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "kind", content = "data"))]
 pub enum ListKind {
-    /// 有序列表（`1.`、`2.` …），起始编号在渲染时恒为 1。
+    /// 有序列表（`1.`、`2.` …）；起始编号不保留
     Ordered,
-    /// 无序列表（`-`、`*`、`+`）。
+    /// 无序列表（`-`、`*`、`+`）
     Bullet(ListBulletKind),
 }
 
-/// 无序列表的项目符号。
+/// 无序列表的项目符号
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum ListBulletKind {
@@ -37,7 +37,6 @@ pub enum ListBulletKind {
     Plus,
 }
 
-/// 列表项数据。
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ListItemKind {

@@ -13,9 +13,7 @@
 //!   result/                          结果目录（空）
 //! ```
 //!
-//! CCR-Plus 采用文件 IO 约定（`<题目名>.in` / `<题目名>.out`）。
-//! 传统题按该约定导出；提交答案型输出 `sub` 提交文件。
-//! 自定义 SPJ 与 lemon/arbiter 一致地编译生成；依赖文件随源码一起拷贝。
+//! 约定与限制见 [`CcrPlusDumper`]。
 
 use std::process::Command;
 
@@ -45,9 +43,9 @@ const DEFAULT_CODE_LEN: u32 = 100;
 /// 推荐编译语言集合（无编译配置时的兜底）
 const DEFAULT_LANGS: &[&str] = &["c", "cpp", "pas"];
 
-/// 语言 -> (编译命令模板，源文件模板)
-/// 模板中 `{source}` 为源文件名（不含扩展名），`{exe}` 为输出文件名（不含扩展名）
-/// CCR-Plus 只支持编译型语言（c/cpp/pas），其余语言会告警并略过。
+/// 取语言对应的编译命令模板与源文件模板（不支持的返回 `None`）
+///
+/// 模板中 `{source}` 为源文件名（不含扩展名），`{exe}` 为输出文件名（不含扩展名）。
 fn compiler_cmd(lang: &str) -> Option<(&'static str, &'static str)> {
     match lang {
         "cpp" => Some(("g++ -o {exe} {source}.cpp -lm -static", "{source}.cpp")),
@@ -224,8 +222,11 @@ fn make_point(prob: &DumpProblem, case: &tuack_lib::dump::DumpCase) -> PrbPoint 
     }
 }
 
-/// 依评分策略把测试点整理成 CCR-Plus 的 subtask 列表。
-/// `Max` 无法表达，报错。
+/// 依评分策略把测试点整理成 CCR-Plus 的 subtask 列表
+///
+/// # Errors
+///
+/// 子任务使用 [`ScorePolicy::Max`]（无法表达）时返回 `Err`。
 fn build_subtasks(prob: &DumpProblem) -> Result<Vec<PrbSubtask>> {
     let mut subtasks = Vec::new();
 
@@ -272,6 +273,7 @@ fn build_subtasks(prob: &DumpProblem) -> Result<Vec<PrbSubtask>> {
     Ok(subtasks)
 }
 
+/// 生成单个题目的 `.prb` 配置内容（XML）
 fn build_prb(
     prob: &DumpProblem,
     checker: &str,
@@ -329,6 +331,7 @@ fn build_prb(
     Ok(xml_decl(to_string(&prb)?))
 }
 
+/// 生成竞赛信息 `.ccr` 的内容（题目顺序）
 fn build_ccr(order: &[String]) -> String {
     let contest = CcrContest {
         maker: "ccr-plus".to_string(),
@@ -340,6 +343,10 @@ fn build_ccr(order: &[String]) -> String {
     xml_decl(to_string(&contest).expect("ccr plus contest 序列化失败"))
 }
 
+/// CCR-Plus 导出器：把 [`Dumper`] 文档导出为 CCR-Plus 竞赛目录。
+///
+/// 采用文件 IO 约定（`<题目名>.in` / `<题目名>.out`）：传统题按该约定导出，
+/// 提交答案型输出 `sub` 提交文件。自定义 SPJ 由本导出器编译生成，依赖文件随源码一起拷贝。
 pub struct CcrPlusDumper {
     tmp: Arc<TempDir>,
 }
@@ -350,7 +357,12 @@ impl CcrPlusDumper {
     }
 
     /// 编译自定义 SPJ：源码与依赖经 assets 读取写入 tmp，再 g++ 编译。
-    /// 返回可执行文件名（含平台后缀）。
+    /// 返回可执行文件名（含平台后缀）
+    ///
+    /// # Errors
+    ///
+    /// 题目没有校验器配置、依赖路径缺少文件名、源码或依赖读取失败、临时文件写入失败，
+    /// 或 g++ 无法执行/编译失败时返回 `Err`。
     fn compile_checker(&self, assets: &dyn AssetProvider, prob: &DumpProblem) -> Result<String> {
         let checker = prob.checker.as_ref().context("无校验器配置")?;
         let stem = checker
@@ -397,6 +409,9 @@ impl CcrPlusDumper {
 }
 
 impl Dumper for CcrPlusDumper {
+    /// 无自定义 SPJ 时用内置 `fulltext` 全文比较；题目为 [`ProblemType::Interactive`]、
+    /// 子任务使用 [`ScorePolicy::Max`]，或自定义 SPJ 编译失败时返回 `Err`；CCR-Plus
+    /// 不支持的语言记警告并略过。其余失败条件见 [`Dumper::dump`]。
     fn dump(
         &self,
         doc: &tuack_lib::dump::DumpDocument,
@@ -435,8 +450,8 @@ impl Dumper for CcrPlusDumper {
                         self.tmp.clone(),
                     )),
                 });
-                // `.prb` 的 `@checker` 写入不带扩展名的基名：CCR-Plus 在 Windows 上
-                // 会自行补充 `.exe`（AddFileExtension），故二进制文件名与属性名需分开。
+                // `.prb` 的 `@checker` 只写不带扩展名的基名：Windows 上 CCR-Plus
+                // 会自行补 `.exe`（AddFileExtension），而本导出器写出的文件名已带平台后缀。
                 stem
             } else {
                 "fulltext".to_string()

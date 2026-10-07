@@ -4,7 +4,7 @@ use crate::prelude::*;
 use std::time::Duration;
 use tuack_lib::problem::{ProblemMeta, ProblemType};
 
-/// 题目运行时的 IO 模式：`file_io` 未配置时按文件 IO（输入输出文件名为 `<name>.in` / `<name>.out`）。
+/// 返回题目运行时的 [`IoMode`]：`file_io` 未配置时按文件 IO（输入输出文件名为 `<name>.in` / `<name>.out`）。
 pub fn io_mode(problem: &ProblemConfig) -> IoMode {
     if problem.file_io.unwrap_or(true) {
         IoMode::File {
@@ -16,7 +16,7 @@ pub fn io_mode(problem: &ProblemConfig) -> IoMode {
     }
 }
 
-/// 题目元信息：渲染文档与导出文档共用的那部分。
+/// 构造题目元信息 [`ProblemMeta`]：渲染文档与导出文档共用的那部分。
 pub fn meta(problem: &ProblemConfig, day_config: &ContestDayConfig) -> ProblemMeta {
     let submit_filenames = day_config
         .compile

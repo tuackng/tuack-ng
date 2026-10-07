@@ -48,7 +48,7 @@ fn collect_extra_down(
     Ok(())
 }
 
-/// 从 config 提取 day 级导出文档（前端构造纯数据，dumper 不接触 config 类型）。
+/// 从 config 提取 day 级导出文档 [`DumpDocument`] 及其 [`FsAssetProvider`] 素材提供者。
 fn build_dump_document(
     contest: &ContestConfig,
     day: &ContestDayConfig,
@@ -171,7 +171,7 @@ fn dump_main(
         Err(e) => {
             msg_error!("导出失败:\n{:?}", e);
             msg_info!("保留临时目录以供调试：{}", tmp.path().display());
-            // 同上
+            // 故意泄漏临时目录，使其不被自动清理，便于事后调试
             std::mem::forget(tmp.clone());
             bail!("导出过程出错");
         }
@@ -190,7 +190,7 @@ fn dump_main(
     if let Err(e) = crate::utils::filesystem::write_outputs(&out_dir, files) {
         msg_error!("写入导出结果失败：{:?}", e);
         msg_info!("保留临时目录以供调试：{}", tmp.path().display());
-        // 同上
+        // 故意泄漏临时目录，使其不被自动清理，便于事后调试
         std::mem::forget(tmp.clone());
         bail!("写入导出结果失败");
     }

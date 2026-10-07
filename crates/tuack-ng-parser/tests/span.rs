@@ -2,7 +2,8 @@
 //!
 //! 约定：
 //! - 块元素与复合行内元素：span 可为 `None`，若为 `Some` 则仅要求 `start` 精确。
-//! - 叶子行内元素（Text/Code/Latex/Html）：span 必须为 `Some`，且 `start` 指向内容起始。
+//! - 叶子行内元素（Text/Code/Latex/Html/FootnoteReference）：span 必须为 `Some`；前四类中
+//!   Text/Latex/Html 的 `start` 指向内容起始，Code 的 `start` 指向开头反引号。
 
 use tuack_ng_parser::Span;
 use tuack_ng_parser::ast::block::BlockKind;
@@ -36,7 +37,7 @@ fn assert_start(span: Option<Span>, src: &str, expect: &str, what: &str) {
     );
 }
 
-/// 块 kind → 名称。
+/// 返回块 kind 名称。
 fn block_name(k: &BlockKind) -> &'static str {
     match k {
         BlockKind::Paragraph(_) => "Paragraph",
@@ -55,7 +56,7 @@ fn block_name(k: &BlockKind) -> &'static str {
     }
 }
 
-/// 行内 kind → 名称。
+/// 返回行内 kind 名称。
 fn inline_name(k: &InlineKind) -> &'static str {
     match k {
         InlineKind::Text(_) => "Text",

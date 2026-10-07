@@ -15,7 +15,7 @@ use crate::plugin::extism::context::{
 };
 use crate::prelude::*;
 
-/// 一个基于 extism 的处理器插件。
+/// 一个基于 extism 的处理器插件
 pub struct ExtismProcessor {
     plugin: Mutex<extism::Plugin>,
     function: String,
@@ -24,8 +24,14 @@ pub struct ExtismProcessor {
 }
 
 impl ExtismProcessor {
-    /// `asset_dir` 为插件随包资源目录（只读 `/assets`）；`command` 为宿主命令白名单。
-    /// 处理器持有独立临时工作区（映射到 WASI `/`）。
+    /// 加载 wasm 插件并校验其导出函数存在，同时准备独立的临时工作区
+    ///
+    /// `asset_dir` 为插件随包资源目录（只读 `/assets`）；`command` 为宿主命令白名单；
+    /// 临时工作区映射到 WASI `/`。
+    ///
+    /// # Errors
+    ///
+    /// 创建临时目录失败、加载插件失败，或插件未导出 `function` 时返回 `Err`。
     pub fn new(
         wasm: Vec<u8>,
         function: String,

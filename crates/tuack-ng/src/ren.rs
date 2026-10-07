@@ -35,7 +35,7 @@ pub struct RenArgs {
     pub no_auto_open: bool,
 }
 
-/// 解析 day -> contest -> 插件模板 覆盖链，得到最终渲染参数。
+/// 解析 day -> contest -> 插件模板的覆盖链，得到最终渲染参数 [`RenParams`]。
 fn resolve_ren_params(
     config: &ContestConfig,
     day_config: &ContestDayConfig,
@@ -57,7 +57,7 @@ fn resolve_ren_params(
     }
 }
 
-/// 构造自洽渲染配置（day -> contest -> template 覆盖链合并）
+/// 构造自洽渲染配置 [`RenConfig`]（合并 contest 与 day 元信息）
 fn build_ren_config(
     config: &ContestConfig,
     day_config: &ContestDayConfig,
@@ -97,7 +97,7 @@ fn build_ren_config(
     })
 }
 
-/// 构造一天的可渲染文档：读题面 -> 模板展开 -> 解析 -> 处理器 -> 图片扫描登记。
+/// 构造一天的可渲染文档 [`RenderDocument`] 及 [`FsAssetProvider`] 素材提供者。
 fn build_render_document(
     config: &ContestConfig,
     options: &RenderOptions,
@@ -153,7 +153,7 @@ fn build_render_document(
             bail!("未找到题面文件：{}", statement_path.display());
         }
 
-        // 解析题面同时展开模板，移除注释
+        // 先移除 HTML 注释，再展开模板
         let (content, warnings) = render_template(
             re.replace_all(&fs::read_to_string(&statement_path)?, "")
                 .as_ref(),
@@ -197,6 +197,7 @@ fn build_render_document(
             }
         }
 
+        // 图片与素材登记均按题目序号 idx 关联，供渲染器解析相对资源
         let (ast, images) = rewrite_images(ast, idx as u64)?;
 
         assets.register(idx as u64, problem_config.path.clone());
@@ -234,6 +235,7 @@ fn build_render_document(
     ))
 }
 
+/// 渲染单个比赛日（`problem` 非空时只渲染该题），产物写入 `statements_dir`。
 fn ren(
     config: &ContestConfig,
     day_config: &ContestDayConfig,

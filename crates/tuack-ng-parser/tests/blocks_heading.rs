@@ -41,11 +41,11 @@ fn heading_strong_content() {
 
 #[test]
 fn setext_vs_thematic_break_after_paragraph() {
-    // 段落紧跟 `=` → Setext H1
+    // 段落紧跟 `=` -> Setext H1
     assert_blocks("a\n===", vec![b(setext_heading(1, vec![text("a")]))]);
-    // 段落紧跟 `-` → Setext H2
+    // 段落紧跟 `-` -> Setext H2
     assert_blocks("a\n---", vec![b(setext_heading(2, vec![text("a")]))]);
-    // 独立 `---` → ThematicBreak
+    // 独立 `---` -> ThematicBreak
     assert_blocks("---", vec![b(BlockKind::ThematicBreak)]);
     // `***` 不是 Setext 下划线（只认 =/-），独立时是分隔线
     assert_blocks(

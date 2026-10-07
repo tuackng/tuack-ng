@@ -6,7 +6,11 @@ use crate::prelude::*;
 
 /// 校验 `rel` 为相对路径且规范化后不越出 `base`，返回相对 `base` 的规范化路径。
 ///
-/// 纯词法校验，用于约束清单路径、产物路径等。
+/// 纯词法校验，不访问文件系统，因此目标路径可以不存在。
+///
+/// # Errors
+///
+/// `rel` 为绝对路径，或规范化后越出 `base`（含 `..` 向上越界）时返回 `Err`。
 pub fn normalize_within(base: &Path, rel: &Path) -> Result<PathBuf> {
     if rel.is_absolute() {
         bail!("路径必须为相对路径：{}", rel.display());
@@ -22,6 +26,10 @@ pub fn normalize_within(base: &Path, rel: &Path) -> Result<PathBuf> {
 ///
 /// 逐段 `symlink_metadata`（不跟随），对悬空软链同样有效；普通文件/目录或尚不存在的
 /// 分量放行。
+///
+/// # Errors
+///
+/// `path` 不在 `base` 内，或任一分量为符号链接（含中间目录与悬空软链）时返回 `Err`。
 pub fn assert_within(base: &Path, path: &Path) -> Result<()> {
     let base = base.clean();
     let rel = path
@@ -39,7 +47,11 @@ pub fn assert_within(base: &Path, path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// `normalize_within` + `assert_within`，返回可安全访问的绝对宿主路径。
+/// 依次调用 [`normalize_within`] 与 [`assert_within`]，返回 `base` 下的规范化路径。
+///
+/// # Errors
+///
+/// 词法越界（绝对路径或 `..` 越界）或路径含符号链接时返回 `Err`；目标路径可以不存在。
 pub fn resolve_within(base: &Path, rel: &Path) -> Result<PathBuf> {
     let base = base.clean();
     let rel = normalize_within(&base, rel)?;

@@ -1,3 +1,7 @@
+//! v5 -> v6：把旧版布尔字段 `use-chk` 转换为 `checker` 配置对象，并移除 `use-chk`。
+//!
+//! 该迁移需要手动执行：写入的 `checker` 依赖列表为空，需人工补充。
+
 use crate::prelude::*;
 
 pub struct V5Migrater;
@@ -12,6 +16,9 @@ impl super::base::Migrater for V5Migrater {
         }
     }
 
+    /// # Errors
+    ///
+    /// 配置不是 JSON 对象时返回 `Err`。
     fn migrate_contest(
         &self,
         mut config: serde_json::Value,
@@ -24,6 +31,9 @@ impl super::base::Migrater for V5Migrater {
         Ok(config)
     }
 
+    /// # Errors
+    ///
+    /// 配置不是 JSON 对象时返回 `Err`。
     fn migrate_day(&self, mut config: serde_json::Value, _dir: &Path) -> Result<serde_json::Value> {
         let obj = config.as_object_mut().context("配置无效")?;
         if obj.get("version").and_then(|v| v.as_u64()).is_some() {
@@ -32,6 +42,9 @@ impl super::base::Migrater for V5Migrater {
         Ok(config)
     }
 
+    /// # Errors
+    ///
+    /// 配置不是 JSON 对象时返回 `Err`。
     fn migrate_problem(
         &self,
         mut config: serde_json::Value,

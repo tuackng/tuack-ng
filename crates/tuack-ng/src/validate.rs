@@ -29,7 +29,7 @@ pub struct ValidateArgs {
     object: String,
 }
 
-/// 编译 Validator，失败时返回错误，由调用方决定如何输出
+/// 编译 [`Validator`]，失败时返回错误。
 pub fn compile_validator(
     problem_config: &ProblemConfig,
     target: Target,

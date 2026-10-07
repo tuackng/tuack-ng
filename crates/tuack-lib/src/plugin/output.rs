@@ -2,7 +2,7 @@
 
 use crate::prelude::*;
 
-/// 插件回传的产物描述。
+/// 插件回传的产物描述
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OutputSpec {
     /// 资产引用：以 `asset_id` 标识的资源，目标相对路径 `path`
@@ -21,12 +21,11 @@ pub struct RendererOutput {
     pub files: Vec<OutputSpec>,
 }
 
-/// 导出器插件返回：导出过程中的面向用户警告与产物描述列表。
+/// 导出器插件返回：导出过程中的警告文本与产物描述列表。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DumperOutput {
     pub warnings: Vec<String>,
     pub files: Vec<OutputSpec>,
 }
 
-// 重新导出。
 pub use crate::ren::ProcessorOutput;

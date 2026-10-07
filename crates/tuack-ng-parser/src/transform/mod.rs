@@ -6,9 +6,9 @@ use crate::ast::block::BlockKind;
 use crate::ast::inline::{Image, InlineKind, Link};
 use crate::ast::{Block, Document, Inline, Table, TableCell};
 
-/// 文档级变换 trait。
+/// 文档级变换 trait
 ///
-/// 提供常用便捷变换；更复杂的修改可直接重建 `Document`。
+/// 提供常用便捷变换；更复杂的修改可直接重建 [`Document`]。
 pub trait Transform {
     /// 将文档的 blocks 重新组织。
     fn map_blocks<F: FnMut(Block) -> Block>(&mut self, f: F) -> &mut Self;

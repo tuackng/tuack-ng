@@ -70,7 +70,7 @@ pub fn main(args: PluginArgs) -> Result<()> {
     }
 }
 
-/// 状态标签（带颜色）。
+/// 返回 [`PluginState`] 对应的彩色状态标签
 fn state_label(state: &PluginState) -> String {
     match state {
         PluginState::Loaded => "已加载".green().to_string(),
@@ -80,7 +80,7 @@ fn state_label(state: &PluginState) -> String {
     }
 }
 
-/// 按包名查找插件。
+/// 按包名查找插件状态 [`PluginStatus`]
 fn find(name: &str) -> Result<&'static PluginStatus> {
     gctx().plugins.plugin(name)
 }
@@ -113,7 +113,7 @@ fn list() -> Result<()> {
     Ok(())
 }
 
-/// 描述行：清单缺失 -> 错误提示；无描述 -> 斜体占位。
+/// 生成描述行：清单缺失 -> 错误提示；无描述 -> 斜体占位。
 fn describe(manifest: Option<&PluginManifest>) -> String {
     match manifest {
         None => "插件描述文件错误或不存在".italic().to_string(),
@@ -124,7 +124,7 @@ fn describe(manifest: Option<&PluginManifest>) -> String {
     }
 }
 
-/// 状态行首列：`ID (版本号)`；无清单时仅 `ID`。
+/// 构造状态行首列：`ID (版本号)`；无清单时仅 `ID`。
 fn versioned(s: &PluginStatus) -> String {
     match s.manifest.as_ref() {
         Some(m) => format!("{} ({})", s.name, m.version),
@@ -197,7 +197,7 @@ fn print_status(s: &PluginStatus) -> Result<()> {
     Ok(())
 }
 
-/// 组件类型名。
+/// 返回组件类型名
 fn kind_name(body: &ComponentBody) -> &'static str {
     match body {
         ComponentBody::Renderer(_) => "renderer",
@@ -207,7 +207,7 @@ fn kind_name(body: &ComponentBody) -> &'static str {
     }
 }
 
-/// 可执行组件的权限一览；无任何权限时为 `None`。
+/// 汇总可执行组件 [`ExecutableComponent`] 的权限；无任何权限时为 `None`。
 fn permissions(e: &ExecutableComponent) -> Option<String> {
     let mut parts = Vec::new();
     if e.wasi {
@@ -284,7 +284,7 @@ fn uninstall(name: &str, yes: bool) -> Result<()> {
     Ok(())
 }
 
-/// 确认（`yes` 为真时跳过）。
+/// 确认（`yes` 为真时跳过）
 fn confirm(prompt: &str, yes: bool) -> Result<bool> {
     use std::io::IsTerminal;
     if yes {

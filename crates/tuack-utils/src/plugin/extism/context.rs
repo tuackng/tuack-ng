@@ -25,7 +25,7 @@ pub(crate) type AssetStreams = Arc<Mutex<HashMap<u64, Box<dyn Reader>>>>;
 
 /// 只读资源挂载点：各插件工厂把包的 `asset_dir` 挂到 `with_allowed_path(..., "/assets")`。
 ///
-/// 它不是工作区内的路径：`host_get_path`、`run_command` 的 `cwd` 与 `asset_copy` 的目标都不接受。
+/// 该挂载点位于工作区之外，`host_get_path`、`run_command` 的 `cwd` 与 `asset_copy` 的目标都不接受。
 pub(crate) const READONLY_ASSET_MOUNT: &str = "/assets";
 
 /// 插件调用期间的主机上下文（经 `call_with_host_context` 注入，供 host 函数访问）。
@@ -252,7 +252,7 @@ fn get_path(
     Ok(())
 }
 
-/// 所有插件共用的 host 函数（日志 + 资产 + 命令 + 路径）。
+/// 构造所有插件共用的 host 函数（日志 + 资产 + 命令 + 路径）。
 pub(crate) fn common_imports() -> Vec<extism::Function> {
     vec![
         super::log_import(),

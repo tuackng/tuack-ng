@@ -29,7 +29,7 @@ use clap::Args;
 #[derive(Args, Debug, Clone)]
 #[command(version)]
 pub struct ConfValuesArgs {
-    /// 值
+    /// 按顺序对应各比赛日或题目的值
     #[arg(required = true)]
     value: Vec<String>,
 }
@@ -70,10 +70,12 @@ pub struct ConfArgs {
 pub struct ConfCustomArgs {
     /// 键
     key: String,
-    /// 值
+    /// 每个子对象对应的 JSON 值
     #[arg(required = true)]
     value: Vec<String>,
 }
+
+/// 批量设置标题：根目录下按顺序对应各比赛日，比赛日目录下按顺序对应各题目
 fn conf_title(args: &ConfValuesArgs) -> Result<()> {
     match gctx()
         .config
@@ -123,6 +125,7 @@ fn conf_title(args: &ConfValuesArgs) -> Result<()> {
     }
 }
 
+/// 批量设置题目时间限制：仅在比赛日目录下可用，按顺序对应各题目
 fn conf_time(args: &ConfValuesArgs) -> Result<()> {
     match gctx()
         .config
@@ -156,6 +159,7 @@ fn conf_time(args: &ConfValuesArgs) -> Result<()> {
     }
 }
 
+/// 批量设置比赛长度：仅在比赛根目录下可用，单位为小时，按比赛日开始时间推算结束时间
 fn conf_length(args: &ConfValuesArgs) -> Result<()> {
     match gctx()
         .config
@@ -194,6 +198,7 @@ fn conf_length(args: &ConfValuesArgs) -> Result<()> {
     }
 }
 
+/// 批量设置任意字段：值是 JSON 字面量，个数与目标子对象个数一致
 fn conf_custom(args: &ConfCustomArgs) -> Result<()> {
     match gctx()
         .config
@@ -266,6 +271,7 @@ fn conf_custom(args: &ConfCustomArgs) -> Result<()> {
     }
 }
 
+/// 将加载时迁移得到的配置写回磁盘
 fn conf_migrate() -> Result<()> {
     let config = gctx()
         .config

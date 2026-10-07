@@ -10,6 +10,10 @@ use crate::span::Spanned;
 /// - 内容恰为 `^` 的单元格：向**上**合并到最近的非合并单元格，其 `rowspan` 累加。
 ///
 /// 被合并的标记单元格标记 `removed_by_extended_table = true`。
+///
+/// # Panics
+///
+/// 当某行的单元格数少于首行（`rows[0]`）时，按列扫描会访问越界下标而 panic。
 pub fn process_spans(rows: &mut [Vec<TableCell>]) {
     // 先按行处理 colspan。
     for row in rows.iter_mut() {

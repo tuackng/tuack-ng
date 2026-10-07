@@ -1,8 +1,4 @@
-//! `:::{kind}` fenced-div 容器块扩展。
-//!
-//! 借鉴 rushdown-fenced-div 的实现：用 rushdown 内置的 `parse_attributes` 解析
-//! `{...}` 属性、用 depth 计数器支持嵌套；对齐 markdown-ppp 的 `container.rs`
-//! 语义（kind + params）。
+//! `:::kind` 或 `:::{.kind}` fenced-div 容器块扩展。
 
 use core::fmt;
 use std::borrow::Cow;
@@ -58,7 +54,7 @@ impl From<FencedDiv> for KindData {
     }
 }
 
-/// fenced-div 块级解析器。
+/// fenced-div 块级解析器
 #[derive(Debug)]
 pub struct FencedDivBlockParser {
     open_div_depth: ContextKey<UsizeValue>,

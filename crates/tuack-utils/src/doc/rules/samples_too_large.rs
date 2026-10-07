@@ -15,7 +15,8 @@ lazy_static! {
         Regex::new(r"\{\{\s*sample\.text\((\d+)\)\s*\}\}").unwrap();
 }
 
-/// 检查文件是否超过限制
+/// 检查样例文件是否超过限制，返回是否超限与超限项说明。
+/// 文件不存在时视为未超限。
 fn check_file_limits(path: &std::path::Path) -> Result<(bool, Option<String>)> {
     if !path.exists() {
         return Ok((false, None));
