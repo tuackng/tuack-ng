@@ -19,9 +19,9 @@ use tuack_lib::dump::Dumper;
 use tuack_lib::ren::{RenProcessor, Renderer};
 
 use crate::plugin::manifest::{Component, ComponentBody, ComponentKind, PluginManifest};
-use tuack_lib::plugin::PLUGIN_API_VERSION;
 use crate::prelude::*;
 use crate::ren::manifest::{TargetType, TemplateManifest};
+use tuack_lib::plugin::PLUGIN_API_VERSION;
 
 /// 渲染配置（模板默认值，可被工程 day/contest 覆盖）
 #[derive(Debug, Clone, Copy)]
@@ -802,8 +802,8 @@ fn is_builtin_reserved(kind: ComponentKind, name: &str, builtin_template_names: 
 /// `required` 不是合法的语义化版本、major 与 [`tuack_lib::plugin::PLUGIN_API_VERSION`] 不同，
 /// 或 minor 高于宿主时返回 `Err`；调用方按"跳过该插件并警告"处理。
 pub fn check_plugin_api(required: &str) -> Result<()> {
-    let required = semver::Version::parse(required)
-        .with_context(|| format!("pluginapi 非法：{required}"))?;
+    let required =
+        semver::Version::parse(required).with_context(|| format!("pluginapi 非法：{required}"))?;
     let host = semver::Version::parse(PLUGIN_API_VERSION)
         .expect("PLUGIN_API_VERSION 必须是合法的语义化版本");
     if required.major != host.major {

@@ -124,4 +124,3 @@ pub fn link_attribute_parser_extension() -> impl ParserExtension {
 #[derive(Debug, Clone, Default)]
 pub struct NoParserOptions;
 impl ParserOptions for NoParserOptions {}
-

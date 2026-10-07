@@ -211,8 +211,10 @@ fn init_context(
 
     let languages = serde_json::from_str(&langs_content)?;
 
-    let plugins =
-        tuack_utils::plugin::manager::PluginManager::discover(&assets_dirs, &user_dir.join("plugins"));
+    let plugins = tuack_utils::plugin::manager::PluginManager::discover(
+        &assets_dirs,
+        &user_dir.join("plugins"),
+    );
     for status in plugins.failed_plugins() {
         debug!(
             "插件 {} 加载失败（{}）：{}",

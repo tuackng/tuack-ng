@@ -16,9 +16,9 @@ use crate::utils::problem::io_mode;
 use tuack_lib::test::{TaskParams, TestCaseStatus, TestSession};
 use tuack_lib::utils::testlib::Checker;
 use tuack_utils::checkers::{cpp::CppChecker, prebuilt::PrebuiltChecker};
+use tuack_utils::data::FsTestData;
 use tuack_utils::runners::cpp::CppRunner;
 use tuack_utils::runners::general::*;
-use tuack_utils::data::FsTestData;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum Target {
