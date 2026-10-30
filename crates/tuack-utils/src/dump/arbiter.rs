@@ -253,7 +253,7 @@ impl Dumper for ArbiterDumper {
                     "MEMLIMITS=".into(),
                     (prob.meta.memory_limit.as_u64() / 1024 / 1024).to_string(),
                 ),
-                ("SAMPLES=".into(), prob.samples.len().to_string()),
+                ("SAMPLES=".into(), prob.data.len().to_string()),
                 ("CCL=c@gcc".into(), format!(" -o %o %i {}", c_args)),
                 ("CCL=cpp@g++".into(), format!(" -o %o %i {}", cpp_args)),
                 ("CCL=pas@fpc".into(), format!(" %i {}", pas_args)),
