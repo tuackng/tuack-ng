@@ -2,7 +2,7 @@
   "projectName": "tuack-ng",
   "projectOwner": "tuackng",
   "repoType": "github",
-  "repoHost": "https://github.com/tuackng/tuack-ng/",
+  "repoHost": "https://github.com",
   "files": [
     "README.md"
   ],
@@ -44,6 +44,15 @@
         "test",
         "review",
         "financial",
+        "code"
+      ]
+    },
+    {
+      "login": "StableAgOH",
+      "name": "AgOH",
+      "avatar_url": "https://avatars.githubusercontent.com/u/50107074?v=4",
+      "profile": "https://github.com/Qaaxaap",
+      "contributions": [
         "code"
       ]
     }
