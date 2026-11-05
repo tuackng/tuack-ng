@@ -43,6 +43,10 @@ jobs:
         with:
           submodules: true
 
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
       - name: Install Dependencies
         run: cargo install cargo-deb --verbose
 
@@ -102,6 +106,8 @@ jobs:
             keep-env-derivations = true
             keep-outputs = true
 
+      - uses: Swatinem/rust-cache@v2
+
       - name: Build Nix
         run: |
           nix build .#tuack-ng -L
@@ -130,12 +136,9 @@ jobs:
       with:
         submodules: true
 
-    - name: Install Rust (Windows)
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        target: ${{ matrix.target }}
+    - uses: dtolnay/rust-toolchain@stable
+
+    - uses: Swatinem/rust-cache@v2
 
     - name: Build Release (Windows)
       run: cargo build --release --target ${{ matrix.target }} --verbose
