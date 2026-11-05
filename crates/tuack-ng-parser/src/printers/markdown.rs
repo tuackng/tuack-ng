@@ -184,7 +184,7 @@ fn render_block(block: &BlockKind, out: &mut String, _indent: usize) {
             out.push_str("\n:::");
         }
         BlockKind::LatexBlock(latex) => {
-            out.push_str("$$");
+            out.push_str("$$\n");
             out.push_str(latex);
             out.push_str("$$");
         }

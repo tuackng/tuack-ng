@@ -61,7 +61,7 @@ fn latex_display_roundtrip() {
     let src = "$$\nE = mc^2\n$$\n";
     let doc = tuack_ng_parser::parse(src);
     let md = tuack_ng_parser::printers::render_markdown(&doc);
-    assert!(md.contains("$$"), "MD 应含 $$..$$，实际：{md}");
+    assert_eq!(md.trim_end(), src.trim_end());
 }
 
 #[test]
