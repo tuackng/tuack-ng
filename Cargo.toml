@@ -36,7 +36,7 @@ tuack-ng-parser = { version = "1.0.4", path = "crates/tuack-ng-parser" }
 
 [profile.release]
 opt-level = 3
-lto = true
+lto = "thin"
 codegen-units = 1
 strip = true
 

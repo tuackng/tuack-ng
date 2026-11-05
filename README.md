@@ -158,7 +158,7 @@ Tuack-NG（`Tuack New Generation`）是一套完整的用于辅助 OI/ACM 竞赛
 ## 致谢
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-6-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 感谢以下同学为本项目的开发提供支持（[✨](https://allcontributors.org/docs/zh-cn/emoji-key)）：
@@ -175,6 +175,7 @@ Tuack-NG（`Tuack New Generation`）是一套完整的用于辅助 OI/ACM 竞赛
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Qaaxaap"><img src="https://avatars.githubusercontent.com/u/175310223?v=4?s=60" width="60px;" alt="Qaaxaap"/><br /><sub><b>Qaaxaap</b></sub></a><br /><a href="https://github.com/tuackng/tuack-ng/commits?author=Qaaxaap" title="Tests">⚠️</a> <a href="https://github.com/tuackng/tuack-ng/pulls?q=is%3Apr+reviewed-by%3AQaaxaap" title="Reviewed Pull Requests">👀</a> <a href="#financial-Qaaxaap" title="Financial">💵</a> <a href="https://github.com/tuackng/tuack-ng/commits?author=Qaaxaap" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/StableAgOH"><img src="https://avatars.githubusercontent.com/u/50107074?v=4?s=60" width="60px;" alt="AgOH"/><br /><sub><b>AgOH</b></sub></a><br /><a href="https://github.com/tuackng/tuack-ng/commits?author=StableAgOH" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Dicarbene"><img src="https://avatars.githubusercontent.com/u/53905542?v=4?s=60" width="60px;" alt="dicarbene"/><br /><sub><b>dicarbene</b></sub></a><br /><a href="https://github.com/tuackng/tuack-ng/commits?author=Dicarbene" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/sgt57"><img src="https://avatars.githubusercontent.com/u/198590103?v=4?s=60" width="60px;" alt="sgt57"/><br /><sub><b>sgt57</b></sub></a><br /><a href="https://github.com/tuackng/tuack-ng/commits?author=sgt57" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
