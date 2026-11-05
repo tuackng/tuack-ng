@@ -58,10 +58,20 @@ fn latex_same_line_dollar_is_not_block() {
 
 #[test]
 fn latex_display_roundtrip() {
-    let src = "$$\nE = mc^2\n$$\n";
-    let doc = tuack_ng_parser::parse(src);
-    let md = tuack_ng_parser::printers::render_markdown(&doc);
-    assert_eq!(md.trim_end(), src.trim_end());
+    for (content, expected) in [
+        ("E = mc^2\n", "$$\nE = mc^2\n$$\n"),
+        ("E = mc^2", "$$\nE = mc^2\n$$\n"),
+        ("x+y\nz+w", "$$\nx+y\nz+w\n$$\n"),
+        ("", "$$\n$$\n"),
+    ] {
+        let doc = tuack_ng_parser::Document {
+            blocks: vec![b(BlockKind::LatexBlock(content.to_string()))],
+        };
+        let md = tuack_ng_parser::printers::render_markdown(&doc);
+        assert_eq!(md, expected);
+        let reparsed = tuack_ng_parser::parse(&md);
+        assert_eq!(tuack_ng_parser::printers::render_markdown(&reparsed), md);
+    }
 }
 
 #[test]

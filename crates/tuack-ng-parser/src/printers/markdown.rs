@@ -186,6 +186,9 @@ fn render_block(block: &BlockKind, out: &mut String, _indent: usize) {
         BlockKind::LatexBlock(latex) => {
             out.push_str("$$\n");
             out.push_str(latex);
+            if !latex.is_empty() && !latex.ends_with('\n') {
+                out.push('\n');
+            }
             out.push_str("$$");
         }
         BlockKind::Empty => {}
