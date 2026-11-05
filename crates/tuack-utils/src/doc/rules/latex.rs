@@ -189,7 +189,11 @@ impl LatexVisitor {
 
         // 大数字
         for cap in LARGE_NUMBER.find_iter(latex) {
-            if Self::in_tools_number(latex, cap.start(), cap.end()) {
+            if matches!(
+                cap.as_str(),
+                "469762049" | "998244353" | "1000000007" | "1000000009"
+            ) || Self::in_tools_number(latex, cap.start(), cap.end())
+            {
                 continue;
             }
             problems.push(LatexProblem {
@@ -306,5 +310,37 @@ impl CheckRule for Latex {
         };
         doc.visit_with(&mut visitor);
         Ok(CheckResult::Tagged(visitor.messages))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tuack_ng_parser::parse;
+
+    #[test]
+    fn common_moduli_are_not_large_numbers() {
+        for source in [
+            r"答案对 $998244353$、$1000000007$ 或 $1000000009$ 取模。",
+            "$469762049$",
+            "$$\n998244353, 1000000007, 1000000009\n$$\n",
+        ] {
+            let mut visitor = LatexVisitor { messages: vec![] };
+            parse(source).visit_with(&mut visitor);
+            assert!(visitor.messages.is_empty(), "{source}");
+        }
+    }
+
+    #[test]
+    fn modulus_exemption_preserves_other_warnings() {
+        let source = r"$n <= 1000000, x = 998244353$";
+        let mut visitor = LatexVisitor { messages: vec![] };
+        parse(source).visit_with(&mut visitor);
+        assert_eq!(visitor.messages.len(), 2);
+        for (message, expected) in visitor.messages.iter().zip(["<=", "1000000"]) {
+            let span = message.span.unwrap();
+            assert_eq!(&source[span.start..span.stop], expected);
+            assert!(message.importance == CheckImportance::Warn);
+        }
     }
 }
