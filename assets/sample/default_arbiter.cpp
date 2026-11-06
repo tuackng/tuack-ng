@@ -134,7 +134,7 @@ void ret(double result, bool add_context = true){
 }
 
 int main(int argc, char **argv){
-	//You'd better not change this swith block
+	//You'd better not change this switch block
 	switch(argc){
 		case 0: case 1:		//LOJ and debug
 			inFile = fopen("input", "r");
