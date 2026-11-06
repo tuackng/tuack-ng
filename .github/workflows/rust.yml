@@ -91,8 +91,10 @@ jobs:
         with:
           path: ~/.rustup
           key: rustup-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}
-      # @master 读取仓库里的 rust-toolchain.toml（版本与组件都在该文件中）。
-      - uses: dtolnay/rust-toolchain@master
+      # 显式版本与 rust-toolchain.toml 保持一致；rustfmt/clippy 用于下面的检查。
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          components: clippy,rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
           key: lint
@@ -155,7 +157,7 @@ jobs:
         with:
           path: ~/.rustup
           key: rustup-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@1.99.1
       - uses: Swatinem/rust-cache@v2
         with:
           key: test-${{ matrix.platform }}
