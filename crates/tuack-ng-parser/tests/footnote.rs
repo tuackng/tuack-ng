@@ -49,18 +49,18 @@ fn footnote_span() {
     }
     impl Visitor for V {
         fn visit_inline(&mut self, i: &tuack_ng_parser::Inline) {
-            if matches!(i.value, InlineKind::FootnoteReference(_)) {
-                if let Some(s) = i.span {
-                    self.ref_span = Some((s.start, s.stop));
-                }
+            if matches!(i.value, InlineKind::FootnoteReference(_))
+                && let Some(s) = i.span
+            {
+                self.ref_span = Some((s.start, s.stop));
             }
             self.walk_inline(i);
         }
         fn visit_block(&mut self, b: &tuack_ng_parser::Block) {
-            if matches!(b.value, BlockKind::FootnoteDefinition(_)) {
-                if let Some(s) = b.span {
-                    self.def_span = Some((s.start, s.stop));
-                }
+            if matches!(b.value, BlockKind::FootnoteDefinition(_))
+                && let Some(s) = b.span
+            {
+                self.def_span = Some((s.start, s.stop));
             }
             self.walk_block(b);
         }

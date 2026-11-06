@@ -570,10 +570,10 @@ impl<'a> Ctx<'a> {
                 end = end.max(p);
             }
             // Text 的 index stop 更精确。
-            if let KindData::Text(t) = self.arena[n].kind_data() {
-                if let Some(idx) = t.index() {
-                    end = end.max(idx.stop());
-                }
+            if let KindData::Text(t) = self.arena[n].kind_data()
+                && let Some(idx) = t.index()
+            {
+                end = end.max(idx.stop());
             }
             let children: Vec<NodeRef> = self.arena[n].children(self.arena).collect();
             for c in children {
