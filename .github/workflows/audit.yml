@@ -1,0 +1,27 @@
+name: Audit
+
+on:
+  # advisory 数据库会独立于仓库变化，每周扫一次，新公告不用等下一次 PR。
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit
+  cancel-in-progress: true
+
+jobs:
+  deny:
+    name: deny
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: taiki-e/install-action@cargo-deny
+
+      - name: Check dependencies
+        run: cargo deny check
