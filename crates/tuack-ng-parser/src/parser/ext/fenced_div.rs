@@ -100,12 +100,11 @@ impl BlockParser for FencedDivBlockParser {
         reader: &mut text::BasicReader,
         ctx: &mut Context,
     ) -> Option<State> {
-        if let Some(last_opened_block) = ctx.last_opened_block() {
-            if last_opened_block != node_ref
-                && matches!(arena[last_opened_block].kind_data(), KindData::CodeBlock(_))
-            {
-                return Some(State::HAS_CHILDREN);
-            }
+        if let Some(last_opened_block) = ctx.last_opened_block()
+            && last_opened_block != node_ref
+            && matches!(arena[last_opened_block].kind_data(), KindData::CodeBlock(_))
+        {
+            return Some(State::HAS_CHILDREN);
         }
         let (line, _) = reader.peek_line_bytes()?;
         let fence_length = line.iter().take_while(|&&b| b == b':').count();
@@ -180,10 +179,10 @@ fn parse_opening_fence(
     reader.skip_spaces();
     // kind 后跟 `{key=val}`：追加解析属性（markdown-ppp 风格 `:::figure{caption=..}`，
     // 也支持无值裸参数，如 `:::align{right}`）。
-    if reader.peek_byte() == b'{' {
-        if let Some(extra) = parse_brace_attributes(reader) {
-            attributes.extend(extra);
-        }
+    if reader.peek_byte() == b'{'
+        && let Some(extra) = parse_brace_attributes(reader)
+    {
+        attributes.extend(extra);
     }
     reader.skip_spaces();
     reader.skip_while(|b| b == b':');
