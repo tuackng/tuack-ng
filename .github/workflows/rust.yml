@@ -147,6 +147,8 @@ jobs:
             artifact_suffix: x86_64
           - target: i686-pc-windows-msvc
             artifact_suffix: x86
+          - target: aarch64-pc-windows-msvc
+            artifact_suffix: arm64
 
     steps:
     - uses: actions/checkout@v6
@@ -154,6 +156,8 @@ jobs:
         submodules: true
 
     - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
 
     - uses: Swatinem/rust-cache@v2
 
