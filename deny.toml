@@ -46,9 +46,38 @@ allow = [
 ]
 
 [bans]
-# 同一 crate 出现多个版本时只提示。
-multiple-versions = "warn"
+# 同一 crate 出现多个版本时拒绝。下面的 skip 是上游固定、无法消除的版本。
+multiple-versions = "deny"
 wildcards = "deny"
+skip = [
+  { name = "base64", version = "=0.22.1" },
+  { name = "block-buffer", version = "=0.10.4" },
+  { name = "cpufeatures", version = "=0.2.17" },
+  { name = "crypto-common", version = "=0.1.7" },
+  { name = "digest", version = "=0.10.7" },
+  { name = "getrandom", version = "=0.2.17" },
+  { name = "getrandom", version = "=0.3.4" },
+  { name = "hashbrown", version = "=0.16.1" },
+  { name = "io-lifetimes", version = "=2.0.4" },
+  { name = "r-efi", version = "=5.3.0" },
+  { name = "rand", version = "=0.9.5" },
+  { name = "rand_core", version = "=0.9.5" },
+  { name = "redox_users", version = "=0.4.6" },
+  { name = "sha2", version = "=0.10.9" },
+  { name = "syn", version = "=1.0.109" },
+  { name = "syn", version = "=2.0.119" },
+  { name = "thiserror", version = "=1.0.69" },
+  { name = "thiserror-impl", version = "=1.0.69" },
+  { name = "toml", version = "=0.5.11" },
+  { name = "toml", version = "=0.9.12" },
+  { name = "toml_datetime", version = "=0.7.5" },
+  { name = "wasm-encoder", version = "=0.258.3" },
+  { name = "wast", version = "=35.0.2" },
+  { name = "windows-sys", version = "=0.52.0" },
+  { name = "winnow", version = "=0.7.15" },
+  { name = "zstd", version = "=0.13.4" },
+  { name = "zstd-safe", version = "=7.4.0" },
+]
 
 [sources]
 unknown-registry = "deny"
