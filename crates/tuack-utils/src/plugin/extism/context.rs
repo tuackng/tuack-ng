@@ -485,7 +485,8 @@ mod tests {
         assert!(!under_readonly_mount("/tmp/assets"));
     }
 
-    #[cfg(unix)]
+    // macOS 的 APFS 拒绝非 UTF-8 文件名，无法构造这个前提；在能构造的平台（Linux）上验证。
+    #[cfg(all(unix, not(target_os = "macos")))]
     #[test]
     fn resolve_workspace_path_reports_non_utf8_as_recoverable() {
         use std::os::unix::ffi::OsStrExt;
