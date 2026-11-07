@@ -1,10 +1,10 @@
 name: CI
 
 on:
+  # 只在 master 的 push 与 PR 上跑。push 到 PR 分支会同时命中 push 与 pull_request，
+  # 同一提交会跑两遍；把 push 限制到 master 后，PR 分支只由 pull_request 事件触发。
   push:
-    branches:
-      - '**'
-      - '!all-contributors/**'
+    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
 
