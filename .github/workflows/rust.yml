@@ -81,7 +81,7 @@ jobs:
       - name: Check spelling
         run: just spell
 
-  # Cargo.toml 的 rust-version 是 1.96。用真实工具链验证，不只写在清单里。
+  # 强制验证 msrv。
   msrv:
     name: msrv
     needs: changes
