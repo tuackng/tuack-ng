@@ -26,8 +26,8 @@ tokio = { version = "1.54.1", features = [
     "rt",
     "time",
 ] }
-tuack-lib = { path = "../tuack-lib" }
-tuack-config = { path = "../tuack-config" }
+tuack-lib.workspace = true
+tuack-config.workspace = true
 
 autocorrect = "2.14.2"
 extism = { version = "1.41.0", default-features = false, features = [

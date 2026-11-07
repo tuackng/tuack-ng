@@ -49,13 +49,13 @@ zip = "9.0.5"
 workspace = true
 
 [dependencies.tuack-lib]
-path = "../tuack-lib"
+workspace = true
 
 [dependencies.tuack-config]
-path = "../tuack-config"
+workspace = true
 
 [dependencies.tuack-utils]
-path = "../tuack-utils"
+workspace = true
 
 [build-dependencies]
 vergen = { version = "10.0.3", features = ["build", "cargo", "cargo_metadata", "rustc", "si"] }
