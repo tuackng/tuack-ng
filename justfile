@@ -1,4 +1,9 @@
 # JustFile for Tuack-NG
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+
+# 列出可用任务
+default:
+    @just --list
 
 # 初始化项目所需信息
 init:
@@ -16,7 +21,7 @@ build:
 
 # 以发布模式构建
 build-release:
-    @cargo build --release
+    @cargo build --release --locked
 
 # 运行
 [no-cd]
@@ -30,6 +35,79 @@ unwrap:
 [working-directory("assets/templates")]
 wrap:
     @cargo run -p tuack-ng -- develop wrap
+
+# 检查格式
+fmt-check:
+    cargo fmt --all -- --check
+
+# 检查 lint
+lint:
+    cargo clippy --workspace --all-targets --locked -- -D warnings
+
+# 运行全部测试
+test:
+    cargo test --workspace --locked
+
+# 用清单里的最低 Rust 版本检查。调用者负责准备工具链。
+msrv:
+    cargo check --workspace --all-targets --locked
+
+# 检查依赖的许可证、bans 与 advisory
+deny:
+    cargo deny check
+
+# 检查拼写
+spell:
+    typos
+
+# PR 必须通过的全部检查
+check: fmt-check lint test
+
+# 完整检查
+verify: check deny spell
+
+# 判断变更是否只有文档。输出 code=true 或 code=false。
+ci-classify:
+    #!/bin/sh
+    set -eu
+    if [ -z "${BASE_SHA:-}" ]; then
+        echo "code=true"
+        exit 0
+    fi
+    if ! paths=$(git diff --name-only "$BASE_SHA...HEAD"); then
+        echo "code=true"
+        exit 0
+    fi
+    printf '%s\n' "$paths" | .github/scripts/classify-changes.sh
+
+# 检查 PR 的提交标题是否符合约定。需要 GH_TOKEN、GH_REPO 与 PR_NUMBER。
+ci-commit-lint:
+    #!/bin/bash
+    set -euo pipefail
+    pattern='^(feat|fix|perf|refactor|docs|test|ci|build|chore|revert|release)(\([a-z0-9_/-]+\))?!?: .+'
+    titles=$(mktemp)
+    gh api "repos/$GH_REPO/pulls/$PR_NUMBER/commits?per_page=100" \
+        --jq '.[].commit.message | split("\n")[0]' > "$titles"
+    status=0
+    while IFS= read -r subject; do
+        [ -n "$subject" ] || continue
+        if ! printf '%s\n' "$subject" | grep -Eq "$pattern"; then
+            echo "::error::commit title does not follow the commit convention: $subject"
+            status=1
+        fi
+    done < "$titles"
+    exit "$status"
+
+# 检查发布版本号与 Cargo.toml 一致。需要 RELEASE_TAG。
+ci-check-version:
+    #!/bin/sh
+    set -eu
+    version=$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)
+    tag="${RELEASE_TAG#v}"
+    if [ "$version" != "$tag" ]; then
+        echo "tag $RELEASE_TAG does not match Cargo.toml ($version)" >&2
+        exit 1
+    fi
 
 # NixOS 底下 build.rs 编译 checkers 炸时使用的东西（笑）
 # 但是使用 flake.nix 时不应该使用

@@ -21,14 +21,14 @@
 ``` mermaid
 flowchart LR
     Receive["接受功能请求 Issue"]
-    --> Traige["审查功能请求"]
+    --> Triage["审查功能请求"]
     --> |"通过"| Pass["移除“待讨论”标签"]
     --> |"被选中"|Milestone["进入开发里程碑"]
     --> Wip["进入开发"]
     --> Completed["开发完成"] -->|"completed"| Close
-    Traige --> |"重复/不切实际/严重偏离开发路线"| Reject["不通过"]
+    Triage --> |"重复/不切实际/严重偏离开发路线"| Reject["不通过"]
     -->|"not planned"| Close["关闭 Issue"]
-    Traige --> |"需要进一步讨论"| Discus["进行讨论"] --> Traige
+    Triage --> |"需要进一步讨论"| Discus["进行讨论"] --> Triage
     Discus --> |"14天内没有更多动态"| Reject
 ```
 

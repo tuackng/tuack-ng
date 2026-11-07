@@ -331,15 +331,15 @@ fn render_table(
             render_inlines(&cell.value.content, footnotes, &mut content);
             // 收集 >1 的 colspan/rowspan。
             let mut cell_parts = Vec::new();
-            if let Some(colspan) = cell.value.colspan {
-                if colspan > 1 {
-                    cell_parts.push(format!("colspan: {colspan}"));
-                }
+            if let Some(colspan) = cell.value.colspan
+                && colspan > 1
+            {
+                cell_parts.push(format!("colspan: {colspan}"));
             }
-            if let Some(rowspan) = cell.value.rowspan {
-                if rowspan > 1 {
-                    cell_parts.push(format!("rowspan: {rowspan}"));
-                }
+            if let Some(rowspan) = cell.value.rowspan
+                && rowspan > 1
+            {
+                cell_parts.push(format!("rowspan: {rowspan}"));
             }
             let cell_repr = if cell_parts.is_empty() {
                 format!("[{content}]")

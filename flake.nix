@@ -33,10 +33,8 @@
           overlays = [ (import rust-overlay) ];
         };
 
-        rustToolchain = pkgs.rust-bin.stable.latest.default.override {
-          extensions = [ "rust-src" ];
-          targets = [ "wasm32-unknown-unknown" "wasm32-wasip1" ];
-        };
+        # 版本与组件由 rust-toolchain.toml 决定，与 CI 使用的版本保持一致。
+        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
 
         craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
         lib = pkgs.lib;
@@ -123,6 +121,7 @@
             gcc
             typst
             testlib
+            just
           ];
 
           shellHook = ''
