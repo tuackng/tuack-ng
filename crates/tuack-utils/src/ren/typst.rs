@@ -83,7 +83,7 @@ impl TypstRenderer {
                     output: format!("{}.out", meta.name),
                     problem_type: problem_type.to_string(),
                     time_limit: format!("{:.1} 秒", meta.time_limit.as_secs_f64()),
-                    memory_limit: format!("{:.0}", meta.memory_limit),
+                    memory_limit: format!("{:.0} MiB", meta.memory_limit.as_mib()),
                     testcase: meta.testcase.to_string(),
                     point_equal: if meta.point_equal { "是" } else { "否" }.to_string(),
                     submit_filename: meta.submit_filename.clone(),
