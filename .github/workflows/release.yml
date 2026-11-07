@@ -6,6 +6,7 @@ on:
       - "*.*.*"
 
   # nightly：每天在默认分支上构建一次，产物作为 artifact 保留，不创建 release。
+  # nightly 不使用缓存，避免把 release 的 target 和 nix store 写进 master ref 挤占限额。
   schedule:
     - cron: "0 16 * * *"
 
@@ -50,15 +51,10 @@ jobs:
         with:
           submodules: true
 
-      # rustup 目录不在 rust-cache 的缓存范围内；单独缓存，避免每个 job 重新下载工具链。
-      - uses: actions/cache@v4
-        with:
-          path: ~/.rustup
-          key: rustup-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}
-
       - uses: dtolnay/rust-toolchain@1.99.1
 
       - uses: Swatinem/rust-cache@v2
+        if: github.event_name != 'schedule'
         with:
           key: release-linux-${{ matrix.artifact_suffix }}
 
@@ -118,15 +114,10 @@ jobs:
           submodules: true
 
       # Windows 的测试在 CI 里跑；macOS 这里也跑一次，避免发布构建带着未测试的代码。
-      - uses: actions/cache@v4
-        if: runner.os == 'macOS'
-        with:
-          path: ~/.rustup
-          key: rustup-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}
       - uses: dtolnay/rust-toolchain@1.99.1
         if: runner.os == 'macOS'
       - uses: Swatinem/rust-cache@v2
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && github.event_name != 'schedule'
         with:
           key: release-nix-macos
       - name: Run tests (macOS)
@@ -142,6 +133,7 @@ jobs:
 
       - name: Cache Nix store
         uses: nix-community/cache-nix-action@v7
+        if: github.event_name != 'schedule'
         with:
           primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.nix', '**/flake.lock', 'rust-toolchain.toml') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}-
@@ -182,17 +174,13 @@ jobs:
       with:
         submodules: true
 
-    - uses: actions/cache@v4
-      with:
-        path: ~/.rustup
-        key: rustup-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('rust-toolchain.toml') }}
-
     - name: Install Rust (Windows)
       uses: dtolnay/rust-toolchain@1.99.1
       with:
         targets: ${{ matrix.target }}
 
     - uses: Swatinem/rust-cache@v2
+      if: github.event_name != 'schedule'
       with:
         key: release-windows-${{ matrix.target }}
 

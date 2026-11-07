@@ -85,11 +85,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: true
-      # rustup 目录不在 rust-cache 的缓存范围内；单独缓存，避免每个 job 重新下载工具链。
-      - uses: actions/cache@v4
-        with:
-          path: ~/.rustup
-          key: rustup-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}
       # 显式版本与 rust-toolchain.toml 保持一致；rustfmt/clippy 用于下面的检查。
       - uses: dtolnay/rust-toolchain@1.99.1
         with:
@@ -117,11 +112,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: true
-      # 1.96.0 是独立工具链，key 不跟 rust-toolchain.toml 走。
-      - uses: actions/cache@v4
-        with:
-          path: ~/.rustup
-          key: rustup-${{ runner.os }}-${{ runner.arch }}-msrv-1.96.0
       - uses: dtolnay/rust-toolchain@1.96.0
       - uses: Swatinem/rust-cache@v2
         with:
@@ -152,10 +142,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: true
-      - uses: actions/cache@v4
-        with:
-          path: ~/.rustup
-          key: rustup-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml') }}
       - uses: dtolnay/rust-toolchain@1.99.1
       - uses: Swatinem/rust-cache@v2
         with:
