@@ -229,17 +229,11 @@ jobs:
     - uses: actions/checkout@v7
 
     # tag 与 Cargo.toml 不一致时，发布会使用错误的版本号。
+    - uses: taiki-e/install-action@just
     - name: Check the tag version
       env:
         RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
-      run: |
-        set -eu
-        version=$(awk -F'"' '/^version = / { print $2; exit }' Cargo.toml)
-        tag="${RELEASE_TAG#v}"
-        if [ "$version" != "$tag" ]; then
-          echo "tag $RELEASE_TAG does not match Cargo.toml ($version)" >&2
-          exit 1
-        fi
+      run: just ci-check-version
 
     - name: Download artifact
       uses: actions/download-artifact@v4

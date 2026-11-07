@@ -30,20 +30,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - uses: taiki-e/install-action@just
       - id: classify
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          set -eu
-          if [ -z "$BASE_SHA" ]; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if ! paths=$(git diff --name-only "$BASE_SHA...HEAD"); then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          printf '%s\n' "$paths" | .github/scripts/classify-changes.sh >> "$GITHUB_OUTPUT"
+        run: just ci-classify >> "$GITHUB_OUTPUT"
 
   # 提交信息决定 CHANGELOG 是否收录。用 GitHub 的 PR commits 列表检查，
   # 避免把 merge 进来的 base 提交计入。
@@ -53,26 +44,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@just
       - name: Check the commit titles
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          set -eu
-          pattern='^(feat|fix|perf|refactor|docs|test|ci|build|chore|revert|release)(\([a-z0-9_/-]+\))?!?: .+'
-          titles=$(mktemp)
-          gh api "repos/$GH_REPO/pulls/$PR_NUMBER/commits?per_page=100" \
-            --jq '.[].commit.message | split("\n")[0]' > "$titles"
-          status=0
-          while IFS= read -r subject; do
-            [ -n "$subject" ] || continue
-            if ! printf '%s\n' "$subject" | grep -Eq "$pattern"; then
-              echo "::error::commit title does not follow the commit convention: $subject"
-              status=1
-            fi
-          done < "$titles"
-          exit "$status"
+        run: just ci-commit-lint
 
   # 格式、lint 与拼写检查与平台无关，只运行一次。工具链版本写在 rust-toolchain.toml。
   lint:
@@ -85,6 +64,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: true
+      - uses: taiki-e/install-action@just
       # 显式版本与 rust-toolchain.toml 一致。rustfmt 与 clippy 用于下面的检查。
       - uses: dtolnay/rust-toolchain@1.99.1
         with:
@@ -93,13 +73,13 @@ jobs:
         with:
           key: lint
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: just fmt-check
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        run: just lint
       - name: Install typos
         run: cargo install typos-cli --locked
       - name: Check spelling
-        run: typos
+        run: just spell
 
   # Cargo.toml 的 rust-version 是 1.96。用真实工具链验证，不只写在清单里。
   msrv:
@@ -112,12 +92,13 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: true
+      - uses: taiki-e/install-action@just
       - uses: dtolnay/rust-toolchain@1.96.0
       - uses: Swatinem/rust-cache@v2
         with:
           key: msrv
       - name: Check with the MSRV
-        run: cargo check --workspace --all-targets --locked
+        run: just msrv
 
   # 测试覆盖每个发布平台，每个提交都运行。release.yml 在 tag 与 nightly 上做构建与发布。
   test:
@@ -144,9 +125,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: true
+      - uses: taiki-e/install-action@just
       - uses: dtolnay/rust-toolchain@1.99.1
       - uses: Swatinem/rust-cache@v2
         with:
           key: test-${{ matrix.platform }}
       - name: Run tests
-        run: cargo test --workspace --locked
+        run: just test

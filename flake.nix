@@ -121,6 +121,7 @@
             gcc
             typst
             testlib
+            just
           ];
 
           shellHook = ''

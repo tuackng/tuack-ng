@@ -21,7 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: taiki-e/install-action@just
       - uses: taiki-e/install-action@cargo-deny
 
       - name: Check dependencies
-        run: cargo deny check
+        run: just deny
