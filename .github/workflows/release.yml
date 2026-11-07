@@ -34,7 +34,34 @@ permissions:
   contents: read
 
 jobs:
+  # 没有新提交时跳过 nightly，避免重复构建。tag 与 dispatch 总是继续。
+  check:
+    name: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - name: Check for new commits
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          last=$(gh api "repos/$GH_REPO/actions/workflows/release.yml/runs?branch=master&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // ""')
+          if [ "$last" = "$GITHUB_SHA" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build-linux:
+    needs: check
+    if: github.event_name != 'schedule' || needs.check.outputs.changed == 'true'
     strategy:
       matrix:
         include:
@@ -92,7 +119,10 @@ jobs:
           path: pack/tuack-ng-linux-${{ matrix.artifact_suffix }}.zip
           retention-days: 7
 
+  # nix 构建每天在 nightly 跑一次。tag 与 dispatch 不构建 nix。
   build-nix:
+    needs: check
+    if: github.event_name == 'schedule' && needs.check.outputs.changed == 'true'
     strategy:
       matrix:
         include:
@@ -104,39 +134,23 @@ jobs:
             artifact_suffix: darwin-arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
-
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: true
-
       - name: Install Nix
         uses: nixbuild/nix-quick-install-action@v31
         with:
           nix_conf: |
             keep-env-derivations = true
             keep-outputs = true
-
-      - name: Cache Nix store
-        uses: nix-community/cache-nix-action@v7
-        if: github.event_name != 'schedule'
-        with:
-          primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.nix', '**/flake.lock', 'rust-toolchain.toml') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}-
-          # 2G 的 GC 上限会删掉工具链外的构建产物，devShell 因此每次重建。4G 保留它。
-          gc-max-store-size: 4G
-
-      # devShell 是开发者的入口，nix build 不经过它。在 x86_64 Linux 上单独验证一次。
       - name: Check the devShell
         if: matrix.runner == 'ubuntu-24.04'
         run: nix develop --command cargo --version
-
       - name: Build Nix
         run: nix build .#tuack-ng -L
-
       - name: Pack zip
         run: zip -r "tuack-ng-nix-${{ matrix.artifact_suffix }}.zip" result/
-
       - name: Upload zip
         uses: actions/upload-artifact@v4
         with:
@@ -145,6 +159,8 @@ jobs:
           retention-days: 7
 
   build-windows:
+    needs: check
+    if: github.event_name != 'schedule' || needs.check.outputs.changed == 'true'
     runs-on: windows-latest
     timeout-minutes: 60
     strategy:
@@ -204,7 +220,7 @@ jobs:
         retention-days: 7
 
   release:
-    needs: [build-linux, build-nix, build-windows, upload-doc]
+    needs: [build-linux, build-windows, upload-doc]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
@@ -234,7 +250,6 @@ jobs:
         files: |
           ./output-linux-deb-*/*.deb
           ./output-linux-zip-*/*.zip
-          ./output-nix-zip-*/*.zip
           ./output-windows-*/*.zip
         body_path: ./release-docs/${{ github.event.inputs.tag || github.ref_name }}.md
       env:
