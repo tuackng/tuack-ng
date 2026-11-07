@@ -134,6 +134,8 @@ jobs:
             platform: linux-arm64
           - runner: windows-latest
             platform: windows-x86_64
+          - runner: windows-11-arm
+            platform: windows-arm64
           - runner: macos-15
             platform: macos-arm64
     runs-on: ${{ matrix.runner }}
