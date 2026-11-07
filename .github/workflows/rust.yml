@@ -1,19 +1,18 @@
 name: CI
 
 on:
-  # 只在 master 的 push 与 PR 上跑。push 到 PR 分支会同时命中 push 与 pull_request，
-  # 同一提交会跑两遍；把 push 限制到 master 后，PR 分支只由 pull_request 事件触发。
+  # 只保留 master 的 push；PR 分支的 push 由 pull_request 事件覆盖，避免同一提交跑两遍。
+  # PR 不限制目标分支，维护分支的 PR 也会触发（workflow 取自 base 分支）。
   push:
     branches: [ "master" ]
   pull_request:
-    branches: [ "master" ]
 
 env:
   CARGO_TERM_COLOR: always
 
-# 同一分支的新提交取消旧运行，只保留最新结果。
+# 同一分支的多次推送只保留最新一次：PR 用 head_ref，push 用 ref。
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 permissions:
