@@ -1,18 +1,18 @@
 # cargo-deny 配置。项目按 AGPL-3.0-or-later 分发，允许宽松许可证的依赖。
-# 依赖里出现的 GPL 只通过 OR 分支引入（例如 GPL-2.0-only OR BSD-3-Clause），
-# 实际可以选择宽松分支，因此 allow 列表里只列宽松许可证与 AGPL 本身。
+# 依赖中出现的 GPL 只通过 OR 分支引入（例如 GPL-2.0-only OR BSD-3-Clause），
+# 可以选择宽松分支，因此 allow 列表只列宽松许可证与 AGPL 本身。
 #
-# 每周由 .github/workflows/audit.yml 运行，本地用 `cargo deny check`。
+# `audit.yml` 每周运行一次。本地用 `cargo deny check`。
 
 [advisories]
 version = 2
-# 允许存在 yanked 版本，但会提示；真正的漏洞由下面的 ignore 或升级处理。
+# 允许 yanked 版本，但会提示。漏洞通过 ignore 或升级处理。
 yanked = "warn"
 ignore = [
   # basic-toml 与 unsafe-libyaml 已停止维护，没有可升级版本。
   "RUSTSEC-2026-0374",
   "RUSTSEC-2024-0449",
-  # wasmtime/wasmtime-wasi 49.0.4 由 extism 1.41 固定。extism 升级到
+  # extism 1.41 固定 wasmtime 与 wasmtime-wasi 49.0.4。extism 升级到
   # 带 wasmtime 49.0.5+ 的版本后移除这四条。
   "RUSTSEC-2026-0420",
   "RUSTSEC-2026-0422",
@@ -22,7 +22,7 @@ ignore = [
 
 [licenses]
 version = 2
-# 依赖的 license 字段有时是 SPDX 表达式且置信度不高，93% 是本项目依赖的实测下限。
+# 依赖的 license 字段有时是 SPDX 表达式，置信度不高。93% 是本项目依赖的实测下限。
 confidence-threshold = 0.93
 allow = [
   "MIT",
@@ -46,9 +46,9 @@ allow = [
 ]
 
 [bans]
-# workspace 内部用 path 依赖且不带 version，cargo-deny 会把它们算作 wildcard。
-# allow-wildcard-paths 对 public crate 不生效（crates.io 不允许纯 path 依赖），
-# 因此这里把 wildcard 降为提示：内部路径依赖不是供应链风险。
+# workspace 内部使用 path 依赖且不带 version，cargo-deny 将它们计为 wildcard。
+# allow-wildcard-paths 对 public crate 不生效，crates.io 不允许纯 path 依赖。
+# 因此 wildcard 降为提示。内部路径依赖不是供应链风险。
 multiple-versions = "warn"
 wildcards = "warn"
 

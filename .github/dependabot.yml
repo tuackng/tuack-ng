@@ -1,5 +1,5 @@
-# 每周检查 Cargo 依赖与 workflow 里用到的 action，各开一个 PR。
-# 提交信息沿用仓库的约定式提交（build(deps)），以便通过 commit-lint 与 git-cliff。
+# 每周检查 Cargo 依赖与 workflow 中使用的 action。每类各开一个 PR。
+# 提交信息沿用仓库的约定式提交（`build(deps)`），以便通过 commit-lint 与 git-cliff。
 version: 2
 updates:
   - package-ecosystem: cargo

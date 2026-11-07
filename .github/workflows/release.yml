@@ -5,27 +5,27 @@ on:
     tags:
       - "*.*.*"
 
-  # nightly：每天在默认分支上构建一次，产物作为 artifact 保留，不创建 release。
-  # nightly 不使用缓存，避免把 release 的 target 和 nix store 写进 master ref 挤占限额。
+  # nightly 每天在默认分支构建一次。产物作为 artifact 保留，不创建 release。
+  # nightly 不使用缓存。release 的 target 和 nix store 不写入 master ref，避免挤占限额。
   schedule:
     - cron: "0 16 * * *"
 
-  # 手动触发：用于补发/重发版本，或在未打 tag 时先构建出草稿 Release。
-  #   * 在某个 tag 上触发并留空 `tag` → 用该 tag（github.ref_name），
-  #     构建与发布都基于该 tag 的提交，适合重新发布历史版本。
-  #   * 在分支上触发并填写 `tag` → 用填写的版本号，构建基于该分支，
+  # 手动触发用于补发或重发版本，也用于在未打 tag 时先构建草稿 Release。
+  #   * 在 tag 上触发并留空 `tag` 时，使用该 tag（github.ref_name）。构建与发布基于该 tag 的提交，
+  #     适合重新发布历史版本。
+  #   * 在分支上触发并填写 `tag` 时，使用填写的版本号。构建基于该分支，
   #     适合发布尚未打 tag 的新版本。
   workflow_dispatch:
     inputs:
       tag:
-        description: '版本号（须有 doc/changelog/<版本号>.md）；留空则使用所选 ref'
+        description: '版本号（须有 doc/changelog/<版本号>.md）。留空则使用所选 ref'
         required: false
         type: string
 
 env:
   CARGO_TERM_COLOR: always
 
-# 发布与 nightly 各自独立运行，不互相取消。
+# 发布与 nightly 独立运行，互不取消。
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
@@ -113,7 +113,7 @@ jobs:
         with:
           submodules: true
 
-      # Windows 的测试在 CI 里跑；macOS 这里也跑一次，避免发布构建带着未测试的代码。
+      # Windows 的测试在 CI 里运行。macOS 这里也运行一次，避免发布构建包含未测试的代码。
       - uses: dtolnay/rust-toolchain@1.99.1
         if: runner.os == 'macOS'
       - uses: Swatinem/rust-cache@v2
@@ -137,10 +137,10 @@ jobs:
         with:
           primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.nix', '**/flake.lock', 'rust-toolchain.toml') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}-
-          # 2G 会让 GC 删掉工具链外的构建产物，devShell 每次重建；4G 保留它。
+          # 2G 的 GC 上限会删掉工具链外的构建产物，devShell 因此每次重建。4G 保留它。
           gc-max-store-size: 4G
 
-      # devShell 是开发者的入口，但 nix build 不经过它；在 x86_64 Linux 上单独验证一次。
+      # devShell 是开发者的入口，nix build 不经过它。在 x86_64 Linux 上单独验证一次。
       - name: Check the devShell
         if: matrix.runner == 'ubuntu-24.04'
         run: nix develop --command cargo --version
@@ -228,7 +228,7 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
-    # tag 与 Cargo.toml 不一致时，发出去的就是错误版本号。
+    # tag 与 Cargo.toml 不一致时，发布会使用错误的版本号。
     - name: Check the tag version
       env:
         RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}

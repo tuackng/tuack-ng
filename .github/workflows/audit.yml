@@ -1,7 +1,7 @@
 name: Audit
 
 on:
-  # advisory 数据库会独立于仓库变化，每周扫一次，新公告不用等下一次 PR。
+  # advisory 数据库独立于仓库变化，系统每周检查一次。
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:

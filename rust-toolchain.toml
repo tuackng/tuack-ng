@@ -1,9 +1,8 @@
 # 固定 CI 与本地开发使用的 Rust 工具链。
 #
-# CI 通过 dtolnay/rust-toolchain 读取本文件，flake 通过
-# rust-overlay 的 `rust-bin.fromRustupToolchainFile` 读取同一条版本，
-# 因此两边不会各自漂移。升级时只改这里，CI 的 action ref 需要一起改
-# （见 .github/workflows/rust.yml 中的 1.99.1）。
+# CI 通过 dtolnay/rust-toolchain 读取本文件。flake 通过 rust-overlay 的
+# `rust-bin.fromRustupToolchainFile` 读取同一版本。因此两边不会漂移。
+# 升级时只改这里。CI 的 action ref 需要一起改（见 .github/workflows/rust.yml 中的 1.99.1）。
 [toolchain]
 channel = "1.99.1"
 profile = "minimal"
