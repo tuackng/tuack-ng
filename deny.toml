@@ -46,11 +46,9 @@ allow = [
 ]
 
 [bans]
-# workspace 内部使用 path 依赖且不带 version，cargo-deny 将它们计为 wildcard。
-# allow-wildcard-paths 对 public crate 不生效，crates.io 不允许纯 path 依赖。
-# 因此 wildcard 降为提示。内部路径依赖不是供应链风险。
+# 同一 crate 出现多个版本时只提示。
 multiple-versions = "warn"
-wildcards = "warn"
+wildcards = "deny"
 
 [sources]
 unknown-registry = "deny"
