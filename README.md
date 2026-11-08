@@ -209,11 +209,11 @@ Tuack-NG（`Tuack New Generation`）是一套完整的用于辅助 OI/ACM 竞赛
 
 Copyright (C) 2025-2026 Tuack-NG Develop Team.
 
-本项目以 Affero General Public License 3.0 或更高版本获得许可。
+本项目的原创代码以 Affero General Public License 3.0 或更高版本（AGPL-3.0-or-later）获得许可。
 
 ---
 
-Tuack-NG 的部分代码衍生自 [Tuack](https://gitee.com/mulab/oi_tools)（GPL-3.0），原作者：Chenxu Min, Zhang Ruizhe, Liu Xiaoyi, Chen Junkun, Chen Shengqi, Luo Lingxiao, Cheng Yuxuan。原 LICENSE 中的版权声明原样保留如下：
+Tuack-NG 的部分代码衍生自 [Tuack](https://gitee.com/mulab/oi_tools)（GPL-3.0-only），原作者：Chenxu Min, Zhang Ruizhe, Liu Xiaoyi, Chen Junkun, Chen Shengqi, Luo Lingxiao, Cheng Yuxuan。原 LICENSE 中的版权声明原样保留如下：
 
 <!-- autocorrect-disable -->
 ```txt
@@ -222,13 +222,13 @@ Copyright (C) 2018  publish
 ```
 <!-- autocorrect-enable -->
 
-移植部分保留原 GPL-3.0 许可，并作为 AGPL-3.0 项目的组成部分分发。
+其中 Arbiter/Lemon 导出逻辑（`dump.py` 的 `arbiter_main`/`arbiter_down`/`lemon`）已获得 Tuack 对应代码贡献者的额外许可，允许 Tuack-NG 按 AGPL-3.0-or-later 使用；Tuack 项目本身仍按 GPL-3.0-only 分发。授权记录见 [doc/license/tuack.md](doc/license/tuack.md)。
 
 ---
 
 Tuack-NG 的 NOI 模板衍生自 [CNOI Statement Generator](https://github.com/Mr-Python-in-China/cnoi-statement-generator)（AGPL-3.0）。
 
-其模板亦源自 Tuack（GPL-3.0），详见其 README。
+其模板亦源自 Tuack（GPL-3.0-only），详见其 README。
 
 ## Stars 历史
 
