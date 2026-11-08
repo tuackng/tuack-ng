@@ -1,29 +1,22 @@
-# cargo-deny 配置。项目按 AGPL-3.0-or-later 分发，允许宽松许可证的依赖。
-# 依赖中出现的 GPL 只通过 OR 分支引入（例如 GPL-2.0-only OR BSD-3-Clause），
-# 可以选择宽松分支，因此 allow 列表只列宽松许可证与 AGPL 本身。
+# cargo-deny 配置。项目按 AGPL-3.0-or-later 分发，允许宽松许可证、
+# MPL-2.0 这类弱 copyleft 依赖，以及 AGPL 本身。依赖中出现的 GPL 只
+# 通过 OR 分支引入（例如 GPL-2.0-only OR BSD-3-Clause），可以选择
+# 宽松分支，因此 allow 列表不含 GPL。
 #
 # `audit.yml` 每周运行一次。本地用 `cargo deny check`。
 
 [advisories]
 version = 2
-# 允许 yanked 版本，但会提示。漏洞通过 ignore 或升级处理。
-yanked = "warn"
+# 拒绝 yanked 版本。
+yanked = "deny"
 ignore = [
-  # basic-toml 与 unsafe-libyaml 已停止维护，没有可升级版本。
+  # 这两条是 unmaintained 通告，不是漏洞；当前依赖链上没有可升级版本。
   "RUSTSEC-2026-0374",
   "RUSTSEC-2024-0449",
-  # extism 1.41 固定 wasmtime 与 wasmtime-wasi 49.0.4。extism 升级到
-  # 带 wasmtime 49.0.5+ 的版本后移除这四条。
-  "RUSTSEC-2026-0420",
-  "RUSTSEC-2026-0422",
-  "RUSTSEC-2026-0423",
-  "RUSTSEC-2026-0424",
 ]
 
 [licenses]
 version = 2
-# 依赖的 license 字段有时是 SPDX 表达式，置信度不高。93% 是本项目依赖的实测下限。
-confidence-threshold = 0.93
 allow = [
   "MIT",
   "Apache-2.0",
@@ -42,11 +35,11 @@ allow = [
   "bzip2-1.0.6",
   "AGPL-3.0-only",
   "AGPL-3.0-or-later",
-  "LGPL-2.1-or-later",
 ]
 
 [bans]
-# 同一 crate 出现多个版本时拒绝。下面的 skip 是上游固定、无法消除的版本。
+# 同一 crate 出现多个版本时拒绝。skip 列出当前依赖图中无法消除的重复版本；
+# 升级依赖后需要同步检查这里的版本。
 multiple-versions = "deny"
 wildcards = "deny"
 skip = [
