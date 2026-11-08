@@ -1,7 +1,6 @@
 name: Audit
 
 on:
-  # advisory 数据库独立于仓库变化，系统每周检查一次。
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:
