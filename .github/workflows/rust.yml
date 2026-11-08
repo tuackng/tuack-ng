@@ -17,6 +17,8 @@ concurrency:
 
 permissions:
   contents: read
+  # commit-lint 用 API 读取 PR 的提交列表。
+  pull-requests: read
 
 jobs:
   # 只有文档改动时不运行检查。分类脚本出错时按代码处理。

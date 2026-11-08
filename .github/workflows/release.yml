@@ -32,6 +32,8 @@ concurrency:
 
 permissions:
   contents: read
+  # check job 用 API 查询上一次成功的 nightly 运行。
+  actions: read
 
 jobs:
   # 没有新提交时跳过 nightly，避免重复构建。tag 与 dispatch 总是继续。
