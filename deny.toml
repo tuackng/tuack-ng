@@ -1,7 +1,7 @@
 # cargo-deny 配置。项目按 AGPL-3.0-or-later 分发，允许宽松许可证、
-# MPL-2.0 这类弱 copyleft 依赖，以及 AGPL 本身。依赖中出现的 GPL 只
-# 通过 OR 分支引入（例如 GPL-2.0-only OR BSD-3-Clause），可以选择
-# 宽松分支，因此 allow 列表不含 GPL。
+# MPL-2.0 这类弱 copyleft 依赖，以及项目自身的 AGPL-3.0-or-later。
+# 依赖中出现的 GPL 只通过 OR 分支引入（例如 GPL-2.0-only OR
+# BSD-3-Clause），可以选择宽松分支，因此 allow 列表不含 GPL。
 #
 # `audit.yml` 每周运行一次。本地用 `cargo deny check`。
 
@@ -13,6 +13,9 @@ ignore = [
   # 这两条是 unmaintained 通告，不是漏洞；当前依赖链上没有可升级版本。
   "RUSTSEC-2026-0374",
   "RUSTSEC-2024-0449",
+  # cel-interpreter 0.10 依赖 paste（编译期 proc-macro），paste 已停止维护；
+  # 等上游迁移到 pastey 后移除。
+  "RUSTSEC-2024-0436",
 ]
 
 [licenses]
@@ -33,7 +36,6 @@ allow = [
   "BSL-1.0",
   "CDLA-Permissive-2.0",
   "bzip2-1.0.6",
-  "AGPL-3.0-only",
   "AGPL-3.0-or-later",
 ]
 

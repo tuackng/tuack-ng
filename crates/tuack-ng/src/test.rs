@@ -2,9 +2,9 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use bytesize::ByteSize;
+use cel_interpreter::{Context as CelContext, Program, Value};
 use clap::{Args, ValueEnum};
 use csv::Writer;
-use evalexpr::eval_boolean;
 use indicatif::ProgressBar;
 use owo_colors::OwoColorize;
 
@@ -136,11 +136,27 @@ fn check_test_case(test_case: &TestCase, actual_score: u32) -> bool {
 
         debug!("条件：{}", expr);
 
-        match eval_boolean(&expr) {
-            Ok(true) => {}
-            Ok(false) => return false,
+        let program = match Program::compile(&expr) {
+            Ok(program) => program,
             Err(error) => {
                 msg_error!("期望条件不合法：{}（{}）", condition, error);
+                return false;
+            }
+        };
+
+        let value = match program.execute(&CelContext::default()) {
+            Ok(value) => value,
+            Err(error) => {
+                msg_error!("期望条件不合法：{}（{}）", condition, error);
+                return false;
+            }
+        };
+
+        match value {
+            Value::Bool(true) => {}
+            Value::Bool(false) => return false,
+            _ => {
+                msg_error!("期望条件不是布尔值：{}", condition);
                 return false;
             }
         }
