@@ -32,7 +32,7 @@ flowchart LR
     Discus --> |"14天内没有更多动态"| Reject
 ```
 
-您可以在[投票页面](https://github.com/Tuack-NG/voting/discussions/categories/Tuack-NG)为您想要的功能进行投票，开发者会结合多种因素，优先处理票数较高的功能请求。需要注意，受限于时间和精力，**票数高的功能请求不是 100% 会被开发者优先处理**，还请谅解。如果您有能力，欢迎为本项目贡献代码。
+<!-- 您可以在 [投票页面](https://github.com/Tuack-NG/voting/discussions/categories/Tuack-NG) 为您想要的功能进行投票，开发者会结合多种因素，优先处理票数较高的功能请求。需要注意，受限于时间和精力，**票数高的功能请求不是 100% 会被开发者优先处理**，还请谅解。如果您有能力，欢迎为本项目贡献代码。 -->
 
 ## 贡献代码
 
