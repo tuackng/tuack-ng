@@ -15,7 +15,7 @@
 
 Tuack-NG（`Tuack New Generation`）是一套完整的用于辅助 OI/ACM 竞赛题目开发的套件，它的思想来自于 Tuack 项目。这个项目的目标是增强原 Tuack 的效率与易用性。
 
-<!-- #### 💬[Tuack-NG QQ 频道](https://pd.qq.com/s/grr6qwqwj) | [Tuack-NG QQ 群组](https://qm.qq.com/q/4NsDQKiAuQ) -->
+<!-- #### 💬[Tuack-NG QQ 频道](https://pd.qq.com/s/todo) | [Tuack-NG QQ 群组](https://qm.qq.com/q/todo) -->
 
 #### [🌐 官方网站 ~~（没做）~~](https://tuack-ng.ink/) | [🚀 软件下载](https://github.com/tuackng/tuack-ng/releases)｜[📚 项目文档](https://docs.tuack-ng.ink)
 
@@ -127,7 +127,7 @@ Tuack-NG（`Tuack New Generation`）是一套完整的用于辅助 OI/ACM 竞赛
 [![GitHub Issues](https://img.shields.io/github/issues-search/tuackng/tuack-ng?query=is%3Aopen&style=flat-square&logo=github&label=Issues&color=%233fb950)](https://github.com/tuackng/tuack-ng/issues)
 [![GitHub Discussions](https://img.shields.io/github/discussions/tuackng/tuack-ng?style=flat-square&logo=Github&label=Discussions)](https://github.com/tuackng/tuack-ng/discussions)
 <!-- [![加入 QQ 频道](https://img.shields.io/badge/QQ_%E9%A2%91%E9%81%93-classisland-%230066cc?style=flat-square&logo=TencentQQ)](https://pd.qq.com/s/scb3wzia)
-[![加入 QQ 群](https://img.shields.io/badge/QQ_%E7%BE%A4-958840932-%230066cc?style=flat-square&logo=TencentQQ)](https://qm.qq.com/q/4NsDQKiAuQ) -->
+[![加入 QQ 群](https://img.shields.io/badge/QQ_%E7%BE%A4-958840932-%230066cc?style=flat-square&logo=TencentQQ)](https://qm.qq.com/q/todo) -->
 
 如果您确定您遇到的问题是一个 **Bug**，或者您要提出一项**新的功能**，请[提交 Issue](https://github.com/tuackng/tuack-ng/issues/new/choose)。
 

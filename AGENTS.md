@@ -45,3 +45,9 @@ flowchart TD
 - `cargo test --workspace` 跑 Rust 测试；`tuack-ng test` 测的是题解，两者无关。
 - 测试只覆盖本项目自己的契约与行为；验证依赖或标准库是否正常属于上游自己的测试，不写在这里。
 - 提交信息与分支选择见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+
+## 贡献
+
+我们欢迎来自 Agents 的贡献，但前提是 Agents 必须遵守约定。
+
+Agent 的代码规范参见本文；提交、PR 等行为的规范，请参见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
