@@ -1,0 +1,258 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+
+  # nightly 每天在默认分支构建一次。产物作为 artifact 保留，不创建 release。
+  # nightly 不使用缓存。release 的 target 和 nix store 不写入 master ref，避免挤占限额。
+  schedule:
+    - cron: "0 16 * * *"
+
+  # 手动触发用于补发或重发版本，也用于在未打 tag 时先构建草稿 Release。
+  #   * 在 tag 上触发并留空 `tag` 时，使用该 tag（github.ref_name）。构建与发布基于该 tag 的提交，
+  #     适合重新发布历史版本。
+  #   * 在分支上触发并填写 `tag` 时，使用填写的版本号。构建基于该分支，
+  #     适合发布尚未打 tag 的新版本。
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '版本号（须有 doc/changelog/<版本号>.md）。留空则使用所选 ref'
+        required: false
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+# 发布与 nightly 独立运行，互不取消。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # check job 用 API 查询上一次成功的 nightly 运行。
+  actions: read
+
+jobs:
+  # 没有新提交时跳过 nightly，避免重复构建。tag 与 dispatch 总是继续。
+  check:
+    name: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - name: Check for new commits
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          last=$(gh api "repos/$GH_REPO/actions/workflows/release.yml/runs?branch=master&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // ""')
+          if [ "$last" = "$GITHUB_SHA" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-linux:
+    needs: check
+    if: github.event_name != 'schedule' || needs.check.outputs.changed == 'true'
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            artifact_suffix: x86_64
+          - runner: ubuntu-24.04-arm
+            artifact_suffix: arm64
+
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@1.99.1
+
+      - uses: Swatinem/rust-cache@v2
+        if: github.event_name != 'schedule'
+        with:
+          key: release-linux-${{ matrix.artifact_suffix }}
+
+      - name: Build Release
+        run: cargo build --release --locked
+
+      - name: Install cargo-deb
+        run: cargo install cargo-deb --locked
+
+      - name: Pack deb
+        run: |
+          cargo deb --no-build -p tuack-ng
+          mv target/debian/*.deb target/debian/tuack-ng-linux-${{ matrix.artifact_suffix }}.deb
+
+      - name: Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-linux-deb-${{ matrix.artifact_suffix }}
+          path: target/debian/*.deb
+          retention-days: 7
+
+      - name: Pack zip
+        run: |
+          mkdir -p pack/
+          cp "target/release/tuack-ng" "pack/tuack-ng"
+          cp -r "assets/" "pack/assets/"
+          cd pack/
+          zip -r "tuack-ng-linux-${{ matrix.artifact_suffix }}.zip" .
+          cd ..
+
+      - name: Upload zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-linux-zip-${{ matrix.artifact_suffix }}
+          path: pack/tuack-ng-linux-${{ matrix.artifact_suffix }}.zip
+          retention-days: 7
+
+  # nix 构建每天在 nightly 跑一次。tag 与 dispatch 不构建 nix。
+  build-nix:
+    needs: check
+    if: github.event_name == 'schedule' && needs.check.outputs.changed == 'true'
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            artifact_suffix: linux-x86_64
+          - runner: ubuntu-24.04-arm
+            artifact_suffix: linux-arm64
+          - runner: macos-15
+            artifact_suffix: darwin-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v31
+        with:
+          nix_conf: |
+            keep-env-derivations = true
+            keep-outputs = true
+      - name: Check the devShell
+        if: matrix.runner == 'ubuntu-24.04'
+        run: nix develop --command cargo --version
+      - name: Build Nix
+        run: nix build .#tuack-ng -L
+      - name: Pack zip
+        run: zip -r "tuack-ng-nix-${{ matrix.artifact_suffix }}.zip" result/
+      - name: Upload zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-nix-zip-${{ matrix.artifact_suffix }}
+          path: tuack-ng-nix-${{ matrix.artifact_suffix }}.zip
+          retention-days: 7
+
+  build-windows:
+    needs: check
+    if: github.event_name != 'schedule' || needs.check.outputs.changed == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            artifact_suffix: x86_64
+          - target: i686-pc-windows-msvc
+            artifact_suffix: x86
+          - target: aarch64-pc-windows-msvc
+            artifact_suffix: arm64
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        submodules: true
+
+    - name: Install Rust (Windows)
+      uses: dtolnay/rust-toolchain@1.99.1
+      with:
+        targets: ${{ matrix.target }}
+
+    - uses: Swatinem/rust-cache@v2
+      if: github.event_name != 'schedule'
+      with:
+        key: release-windows-${{ matrix.target }}
+
+    - name: Build Release (Windows)
+      run: cargo build --release --locked --target ${{ matrix.target }}
+
+    - name: Pack
+      run: |
+        New-Item -ItemType Directory -Force -Path pack/
+        Copy-Item "target/${{ matrix.target }}/release/tuack-ng.exe" "pack/tuack-ng.exe" -Force
+        Copy-Item "assets/" "pack/assets/" -Recurse -Force
+        Compress-Archive -Path "pack/*" -DestinationPath "pack/tuack-ng-windows-${{ matrix.artifact_suffix }}.zip" -Force
+
+    - name: Upload Windows binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: output-windows-${{ matrix.artifact_suffix }}
+        path: pack/tuack-ng-windows-${{ matrix.artifact_suffix }}.zip
+        retention-days: 7
+
+  upload-doc:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    steps:
+    - uses: actions/checkout@v7
+    - name: Upload Release doc
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-docs
+        path: doc/changelog/${{ github.event.inputs.tag || github.ref_name }}.md
+        if-no-files-found: error
+        retention-days: 7
+
+  release:
+    needs: [build-linux, build-windows, upload-doc]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v7
+
+    # tag 与 Cargo.toml 不一致时，发布会使用错误的版本号。
+    - uses: taiki-e/install-action@just
+    - name: Check the tag version
+      env:
+        RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      run: just ci-check-version
+
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        path: .
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+        draft: true
+        files: |
+          ./output-linux-deb-*/*.deb
+          ./output-linux-zip-*/*.zip
+          ./output-windows-*/*.zip
+        body_path: ./release-docs/${{ github.event.inputs.tag || github.ref_name }}.md
+      env:
+        GITHUB_TOKEN: ${{ github.token }}

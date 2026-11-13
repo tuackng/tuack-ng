@@ -1,192 +1,136 @@
-name: Rust Build and Release
+name: CI
 
 on:
+  # push 只匹配 master。PR 分支的 push 不触发 push 事件，同一提交不会运行两次。
+  # PR 不限制目标分支，维护分支的 PR 也会触发。PR 的 workflow 文件来自 base 分支。
   push:
-    branches:
-      - '**'
-      - '!all-contributors/**'
-    tags:
-      - "*.*.*"
-
-  pull_request:
     branches: [ "master" ]
-
-  # 手动触发：用于补发/重发版本，或在未打 tag 时先构建出草稿 Release。
-  #   * 在某个 tag 上触发并留空 `tag` → 用该 tag（github.ref_name），
-  #     构建与发布都基于该 tag 的提交，适合重新发布历史版本。
-  #   * 在分支上触发并填写 `tag` → 用填写的版本号，构建基于该分支，
-  #     适合发布尚未打 tag 的新版本。
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: '版本号（须有 doc/changelog/<版本号>.md）；留空则使用所选 ref'
-        required: false
-        type: string
+  pull_request:
 
 env:
   CARGO_TERM_COLOR: always
 
+# 同一分支只保留最新一次运行。PR 使用 head_ref，push 使用 ref。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # commit-lint 用 API 读取 PR 的提交列表。
+  pull-requests: read
+
 jobs:
-  build-linux:
-    strategy:
-      matrix:
-        include:
-          - runner: ubuntu-24.04
-            artifact_suffix: x86_64
-          - runner: ubuntu-24.04-arm
-            artifact_suffix: arm64
-
-    runs-on: ${{ matrix.runner }}
-
+  # 只有文档改动时不运行检查。分类脚本出错时按代码处理。
+  changes:
+    name: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: taiki-e/install-action@just
+      - id: classify
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: just ci-classify >> "$GITHUB_OUTPUT"
+
+  # 提交信息决定 CHANGELOG 是否收录。用 GitHub 的 PR commits 列表检查，
+  # 避免把 merge 进来的 base 提交计入。
+  commit-lint:
+    name: commit-lint
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@just
+      - name: Check the commit titles
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: just ci-commit-lint
+
+  # 格式、lint 与拼写检查与平台无关，只运行一次。工具链版本写在 rust-toolchain.toml。
+  lint:
+    name: lint
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
         with:
           submodules: true
-
-      - name: Install Dependencies
-        run: cargo install cargo-deb --verbose
-
-      - name: Build Release
-        run: cargo build --release --verbose
-
-      - name: Run tests
-        run: cargo test --workspace
-
-      - name: Pack deb
-        run: |
-          cargo deb -p tuack-ng
-          mv target/debian/*.deb target/debian/tuack-ng-linux-${{ matrix.artifact_suffix }}.deb
-
-      - name: Upload deb
-        uses: actions/upload-artifact@v4
+      - uses: taiki-e/install-action@just
+      # 显式版本与 rust-toolchain.toml 一致。rustfmt 与 clippy 用于下面的检查。
+      - uses: dtolnay/rust-toolchain@1.99.1
         with:
-          name: output-linux-deb-${{ matrix.artifact_suffix }}
-          path: target/debian/*.deb
-
-      - name: Pack zip
-        run: |
-          mkdir -p pack/
-          cp "target/release/tuack-ng" "pack/tuack-ng"
-          cp -r "assets/" "pack/assets/"
-          cd pack/
-          zip -r "tuack-ng-linux-${{ matrix.artifact_suffix }}.zip" .
-          cd ..
-
-      - name: Upload zip
-        uses: actions/upload-artifact@v4
+          components: clippy,rustfmt
+      - uses: Swatinem/rust-cache@v2
         with:
-          name: output-linux-zip-${{ matrix.artifact_suffix }}
-          path: pack/tuack-ng-linux-${{ matrix.artifact_suffix }}.zip
+          key: lint
+      - name: Check formatting
+        run: just fmt-check
+      - name: Clippy
+        run: just lint
+      - name: Install typos
+        run: cargo install typos-cli --locked
+      - name: Check spelling
+        run: just spell
 
-  build-nix:
+  # 强制验证 msrv。
+  msrv:
+    name: msrv
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - uses: taiki-e/install-action@just
+      - uses: dtolnay/rust-toolchain@1.96.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: msrv
+      - name: Check with the MSRV
+        run: just msrv
+
+  # 测试覆盖每个发布平台，每个提交都运行。release.yml 在 tag 与 nightly 上做构建与发布。
+  test:
+    name: test
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     strategy:
+      fail-fast: false
       matrix:
         include:
           - runner: ubuntu-24.04
-            artifact_suffix: linux-x86_64
+            platform: linux-x86_64
           - runner: ubuntu-24.04-arm
-            artifact_suffix: linux-arm64
+            platform: linux-arm64
+          - runner: windows-latest
+            platform: windows-x86_64
+          - runner: windows-11-arm
+            platform: windows-arm64
           - runner: macos-15
-            artifact_suffix: darwin-arm64
+            platform: macos-arm64
     runs-on: ${{ matrix.runner }}
-
+    timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
-
-      - name: Install Nix
-        uses: nixbuild/nix-quick-install-action@v31
+      - uses: taiki-e/install-action@just
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: Swatinem/rust-cache@v2
         with:
-          nix_conf: |
-            keep-env-derivations = true
-            keep-outputs = true
-
-      - name: Build Nix
-        run: |
-          nix build .#tuack-ng -L
-
-      - name: Pack zip
-        run: zip -r "tuack-ng-nix-${{ matrix.artifact_suffix }}.zip" result/
-
-      - name: Upload zip
-        uses: actions/upload-artifact@v4
-        with:
-          name: output-nix-zip-${{ matrix.artifact_suffix }}
-          path: tuack-ng-nix-${{ matrix.artifact_suffix }}.zip
-
-  build-windows:
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        include:
-          - target: x86_64-pc-windows-msvc
-            artifact_suffix: x86_64
-          - target: i686-pc-windows-msvc
-            artifact_suffix: x86
-
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        submodules: true
-
-    - name: Install Rust (Windows)
-      uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-        target: ${{ matrix.target }}
-
-    - name: Build Release (Windows)
-      run: cargo build --release --target ${{ matrix.target }} --verbose
-
-    - name: Pack
-      run: |
-        New-Item -ItemType Directory -Force -Path pack/
-        Copy-Item "target/${{ matrix.target }}/release/tuack-ng.exe" "pack/tuack-ng.exe" -Force
-        Copy-Item "assets/" "pack/assets/" -Recurse -Force
-        Compress-Archive -Path "pack/*" -DestinationPath "pack/tuack-ng-windows-${{ matrix.artifact_suffix }}.zip" -Force
-
-    - name: Upload Windows binaries
-      uses: actions/upload-artifact@v4
-      with:
-        name: output-windows-${{ matrix.artifact_suffix }}
-        path: pack/tuack-ng-windows-${{ matrix.artifact_suffix }}.zip
-
-  upload-doc:
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-    steps:
-    - uses: actions/checkout@v6
-    - name: Upload Release doc
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-docs
-        path: doc/changelog/${{ github.event.inputs.tag || github.ref_name }}.md
-
-  release:
-    needs: [build-linux, build-nix, build-windows, upload-doc]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-
-    steps:
-    - name: Download artifact
-      uses: actions/download-artifact@v4
-      with:
-        path: .
-
-    - name: Display structure of downloaded files
-      run: ls -R .
-
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-        draft: true
-        files: |
-          ./output-linux-deb-*/*.deb
-          ./output-linux-zip-*/*.zip
-          ./output-windows-*/*.zip
-        body_path: ./release-docs/${{ github.event.inputs.tag || github.ref_name }}.md
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          key: test-${{ matrix.platform }}
+      - name: Run tests
+        run: just test

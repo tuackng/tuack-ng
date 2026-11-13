@@ -14,7 +14,7 @@ bytesize.workspace = true
 indexmap.workspace = true
 serde.workspace = true
 serde_many.workspace = true
-tuack-lib = { path = "../tuack-lib" }
+tuack-lib.workspace = true
 
 anstream.workspace = true
 debug_tree = "0.4.0"

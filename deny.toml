@@ -1,0 +1,79 @@
+# cargo-deny 配置。项目按 AGPL-3.0-or-later 分发，允许宽松许可证、
+# MPL-2.0 这类弱 copyleft 依赖，以及项目自身的 AGPL-3.0-or-later。
+# 依赖中出现的 GPL 只通过 OR 分支引入（例如 GPL-2.0-only OR
+# BSD-3-Clause），可以选择宽松分支，因此 allow 列表不含 GPL。
+#
+# `audit.yml` 每周运行一次。本地用 `cargo deny check`。
+
+[advisories]
+version = 2
+# 拒绝 yanked 版本。
+yanked = "deny"
+ignore = [
+  # 这两条是 unmaintained 通告，不是漏洞；当前依赖链上没有可升级版本。
+  "RUSTSEC-2026-0374",
+  "RUSTSEC-2024-0449",
+  # cel-interpreter 0.10 依赖 paste（编译期 proc-macro），paste 已停止维护；
+  # 等上游迁移到 pastey 后移除。
+  "RUSTSEC-2024-0436",
+]
+
+[licenses]
+version = 2
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Zlib",
+  "MPL-2.0",
+  "CC0-1.0",
+  "Unlicense",
+  "0BSD",
+  "BSL-1.0",
+  "CDLA-Permissive-2.0",
+  "bzip2-1.0.6",
+  "AGPL-3.0-or-later",
+]
+
+[bans]
+# 同一 crate 出现多个版本时拒绝。skip 列出当前依赖图中无法消除的重复版本；
+# 升级依赖后需要同步检查这里的版本。
+multiple-versions = "deny"
+wildcards = "deny"
+skip = [
+  { name = "base64", version = "=0.22.1" },
+  { name = "block-buffer", version = "=0.10.4" },
+  { name = "cpufeatures", version = "=0.2.17" },
+  { name = "crypto-common", version = "=0.1.7" },
+  { name = "digest", version = "=0.10.7" },
+  { name = "getrandom", version = "=0.2.17" },
+  { name = "getrandom", version = "=0.3.4" },
+  { name = "hashbrown", version = "=0.16.1" },
+  { name = "io-lifetimes", version = "=2.0.4" },
+  { name = "r-efi", version = "=5.3.0" },
+  { name = "rand", version = "=0.9.5" },
+  { name = "rand_core", version = "=0.9.5" },
+  { name = "redox_users", version = "=0.4.6" },
+  { name = "sha2", version = "=0.10.9" },
+  { name = "syn", version = "=1.0.109" },
+  { name = "syn", version = "=2.0.119" },
+  { name = "thiserror", version = "=1.0.69" },
+  { name = "thiserror-impl", version = "=1.0.69" },
+  { name = "toml", version = "=0.5.11" },
+  { name = "toml", version = "=0.9.12" },
+  { name = "toml_datetime", version = "=0.7.5" },
+  { name = "wasm-encoder", version = "=0.258.3" },
+  { name = "wast", version = "=35.0.2" },
+  { name = "windows-sys", version = "=0.52.0" },
+  { name = "winnow", version = "=0.7.15" },
+  { name = "zstd", version = "=0.13.4" },
+  { name = "zstd-safe", version = "=7.4.0" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

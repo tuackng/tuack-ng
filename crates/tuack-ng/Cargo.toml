@@ -12,6 +12,7 @@ rust-version.workspace = true
 anstream.workspace = true
 anyhow.workspace = true
 bytesize.workspace = true
+cel-interpreter = { version = "0.10.0", default-features = false }
 chrono = "0.4.45"
 clap = { version = "4.6.7", features = ["cargo", "derive"] }
 clap-i18n-richformatter = { version = "0.3.2", features = ["derive"] }
@@ -21,7 +22,6 @@ csv = "1.4.0"
 dialoguer = "0.12.0"
 dirs = "7.0.0"
 dunce.workspace = true
-evalexpr = "13.1.0"
 indexmap.workspace = true
 indicatif = "0.18.6"
 indicatif-log-bridge = "0.2.3"
@@ -49,13 +49,13 @@ zip = "9.0.5"
 workspace = true
 
 [dependencies.tuack-lib]
-path = "../tuack-lib"
+workspace = true
 
 [dependencies.tuack-config]
-path = "../tuack-config"
+workspace = true
 
 [dependencies.tuack-utils]
-path = "../tuack-utils"
+workspace = true
 
 [build-dependencies]
 vergen = { version = "10.0.3", features = ["build", "cargo", "cargo_metadata", "rustc", "si"] }
