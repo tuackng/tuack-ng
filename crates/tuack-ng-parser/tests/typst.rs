@@ -193,7 +193,8 @@ const EXPECTED_TYPST: &str = include_str!("fixtures/comprehensive.typ");
 /// 锁定一份覆盖多种语法的完整文档的 Typst 输出。
 #[test]
 fn typst_comprehensive_snapshot() {
-    // Windows 的 git 会把 fixture 转成 CRLF；解析与比较前统一成 LF，避免换行差异。
+    // Windows 的 git 会把 fixture 转成 CRLF
+    // 解析与比较前统一成 LF，避免换行差异。
     let source = COMPREHENSIVE_DOC.replace("\r\n", "\n");
     let expected = EXPECTED_TYPST.replace("\r\n", "\n");
     let doc = tuack_ng_parser::parse(&source);
