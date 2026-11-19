@@ -22,6 +22,7 @@ const SCOPES: &[&str] = &[
     "utils",
     "parser",
     "plugin-sdk",
+    "xtask",
     "assets",
     "nix",
     "ci",

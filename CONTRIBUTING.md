@@ -163,6 +163,7 @@ gitGraph
 | `utils`      | `crates/tuack-utils/src`      | `utils/ren`、`utils/dump`、`utils/doc`、`utils/compilers`、`utils/checkers`、`utils/validators`、`utils/plugin` |
 | `parser`     | `crates/tuack-ng-parser/src`  | `parser/ast`、`parser/printers`、`parser/visitor`、`parser/transform`                                           |
 | `plugin-sdk` | `crates/tuack-plugin-sdk/src` | `plugin-sdk/host`、`plugin-sdk/processor`、`plugin-sdk/dumper`、`plugin-sdk/renderer`                           |
+| `xtask`      | `crates/tuack-xtask/src`      | `xtask/dist`、`xtask/checkers`                                                                                  |
 | `assets`     | `assets/`                     | `assets/templates`、`assets/checkers`                                                                           |
 | —            | 仓库级事务                    | `nix`、`ci`、`release`、`deps`                                                                                  |
 
