@@ -173,6 +173,6 @@ gitGraph
 
 您可以向本项目发起 [Pull Request](https://github.com/tuackng/tuack-ng/pulls) 来合并您的更改。在发起 Pull Request 时，请简要地描述您做的更改，并最好附上您实现的功能的演示截图/视频。
 
-<!-- ## 还有疑问？
+## 还有疑问？
 
-您可以 [加入 QQ 群](https://qm.qq.com/q/todo) 与开发者和其他用户讨论。 -->
+您可以 [加入 QQ 群](https://qm.qq.com/q/kFAubBur72) 与开发者和其他用户讨论。
