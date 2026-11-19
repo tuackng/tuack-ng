@@ -43,7 +43,7 @@ pub fn run_file(path: &Path) -> Result<()> {
         return Ok(());
     };
     if let Err(reason) = check(subject, &message) {
-        eprint!("{}", report(&reason));
+        eprintln!("{}", report(&reason));
         process::exit(1);
     }
     Ok(())
@@ -57,6 +57,7 @@ pub fn run_range(range: &str) -> Result<()> {
     if is_null_revision(range) {
         return Ok(());
     }
+
     let root = workspace::root();
     let sh = Shell::new()?;
     let left = range.split("..").next().unwrap_or_default();
