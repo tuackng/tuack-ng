@@ -51,12 +51,14 @@ pub fn run(platform: Platform, libc: Option<LibcChoice>) -> Result<()> {
 fn build_checkers(target: Target, platform: Platform) -> Result<PathBuf> {
     let root = workspace::root();
     let checkers_dir = root.join("target/checkers");
+
     if checkers_dir.exists() {
         fs::remove_dir_all(&checkers_dir)
             .with_context(|| format!("无法清空 {}", checkers_dir.display()))?;
     }
     fs::create_dir_all(&checkers_dir)
         .with_context(|| format!("无法创建 {}", checkers_dir.display()))?;
+
     for entry in fs::read_dir(root.join("assets/checkers")).context("无法读取 assets/checkers")?
     {
         let entry = entry?;
@@ -79,6 +81,7 @@ fn build_checkers(target: Target, platform: Platform) -> Result<PathBuf> {
             target: target.zig_target(),
         }
     };
+
     checkers::build_with(&checkers_dir, &testlib, compiler)?;
     Ok(checkers_dir)
 }
