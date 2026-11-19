@@ -8,7 +8,8 @@
 
 [![Stars](https://img.shields.io/github/stars/tuackng/tuack-ng?label=Stars)](https://github.com/tuackng/tuack-ng)
 [![正式版 Release](https://img.shields.io/github/v/release/tuackng/tuack-ng?style=flat-square&color=%233fb950&label=正式版)](https://github.com/tuackng/tuack-ng/releases/latest)
-[![测试版 Release](https://img.shields.io/github/v/release/tuackng/tuack-ng?include_prereleases&style=flat-square&label=测试版)](https://github.com/tuackng/tuack-ng/releases/)
+[![测试版 Release](https://img.shields.io/github/v/release/tuackng/tuack-ng?include_prereleases&style=flat-square&label=测试版&filter=!nightly)](https://github.com/tuackng/tuack-ng/releases/)
+[![Nightly Release](https://img.shields.io/badge/Nightly_版本-purple?style=flat-square)](https://github.com/tuackng/tuack-ng/releases/tag/nightly)
 [![下载量](https://img.shields.io/github/downloads/tuackng/tuack-ng/total?style=social&label=下载量&logo=github)](https://github.com/tuackng/tuack-ng/releases/latest)<br/>
 ![GitHub Repo size](https://img.shields.io/github/repo-size/tuackng/tuack-ng?style=flat-square&color=3cb371)
 [![GitHub Repo Languages](https://img.shields.io/github/languages/top/tuackng/tuack-ng?style=flat-square)](https://github.com/tuackng/tuack-ng/search?l=Rust)
