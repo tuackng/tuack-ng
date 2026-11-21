@@ -271,7 +271,8 @@ pub fn main(args: ConfArgs) -> Result<()> {
             conf_migrate()?;
         }
         Targets::Validate => {
-            println!("{}", gctx().loadctx.render_tree());
+            let use_color = crate::utils::message::supports_color();
+            println!("{}", gctx().loadctx.render_tree(use_color));
         }
     }
 

@@ -195,7 +195,8 @@ fn init_context(
                     }
                     if err_count > 0 {
                         msg_error!("配置文件中发现了 {} 个错误：", err_count);
-                        msg!("{}", ctx.render_errors_tree());
+                        let use_color = crate::utils::message::supports_color();
+                        msg!("{}", ctx.render_errors_tree(use_color));
                     }
                 }
             }

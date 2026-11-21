@@ -1,13 +1,6 @@
 use crate::prelude::*;
 use debug_tree::{TreeBuilder, TreeConfig, TreeSymbols};
-
-/// 判断标准输出当前是否输出彩色：其颜色选择不为 `Never` 时返回 `true`
-fn supports_color() -> bool {
-    !matches!(
-        anstream::stdout().current_choice(),
-        anstream::ColorChoice::Never
-    )
-}
+use owo_colors::OwoColorize;
 
 /// 加载消息级别
 #[derive(Clone, Debug, Copy)]
@@ -98,9 +91,11 @@ impl LoadMessages {
         self.count() == 0
     }
 
-    pub fn render_tree(&self, tree: &mut TreeBuilder) {
+    /// 渲染消息树；`use_color` 表示是否展示颜色，
+    /// 具体决定状态符号用彩色 `*` 还是纯文本 `[W]`/`[E]`/`[N]`。
+    pub fn render_tree(&self, tree: &mut TreeBuilder, use_color: bool) {
         for leaf in &self.messages {
-            let level_string = if supports_color() {
+            let level_string = if use_color {
                 match leaf.level {
                     LoadMessageLevel::Warn => "*".yellow().bold().to_string(),
                     LoadMessageLevel::Error => "*".red().bold().to_string(),
@@ -122,16 +117,18 @@ impl LoadMessages {
                 continue;
             }
             let _branch = tree.add_branch(&branch.name);
-            branch.render_tree(tree);
+            branch.render_tree(tree, use_color);
         }
     }
 
-    pub fn render_errors(&self, tree: &mut TreeBuilder) {
+    /// 渲染错误消息树；`use_color` 表示是否展示颜色，
+    /// 具体决定错误符号用彩色 `*` 还是纯文本 `[E]`。
+    pub fn render_errors(&self, tree: &mut TreeBuilder, use_color: bool) {
         for leaf in &self.messages {
             if !matches!(leaf.level, LoadMessageLevel::Error) {
                 continue;
             }
-            let level_string = if supports_color() {
+            let level_string = if use_color {
                 "*".red().bold().to_string()
             } else {
                 "[E]".to_string()
@@ -145,7 +142,7 @@ impl LoadMessages {
                 continue;
             }
             let _branch = tree.add_branch(&branch.name);
-            branch.render_errors(tree);
+            branch.render_errors(tree, use_color);
         }
     }
 }
@@ -231,25 +228,37 @@ impl LoadContext {
         self.current().push(LoadMessage::error(message));
     }
 
-    pub fn render_tree(&self) -> String {
+    /// 渲染消息树；`use_color` 表示是否展示颜色，为 `false` 时移除 ANSI。
+    pub fn render_tree(&self, use_color: bool) -> String {
         let mut tree = TreeBuilder::new();
         tree.set_config_override(
             TreeConfig::new()
                 .symbols(TreeSymbols::new().leaf("─ "))
                 .indent(2),
         );
-        self.root.render_tree(&mut tree);
-        tree.string()
+        self.root.render_tree(&mut tree, use_color);
+        let text = tree.string();
+        if use_color {
+            text
+        } else {
+            anstream::adapter::strip_str(&text).to_string()
+        }
     }
 
-    pub fn render_errors_tree(&self) -> String {
+    /// 渲染错误消息树；`use_color` 表示是否展示颜色，为 `false` 时移除 ANSI。
+    pub fn render_errors_tree(&self, use_color: bool) -> String {
         let mut tree = TreeBuilder::new();
         tree.set_config_override(
             TreeConfig::new()
                 .symbols(TreeSymbols::new().leaf("─ "))
                 .indent(2),
         );
-        self.root.render_errors(&mut tree);
-        tree.string()
+        self.root.render_errors(&mut tree, use_color);
+        let text = tree.string();
+        if use_color {
+            text
+        } else {
+            anstream::adapter::strip_str(&text).to_string()
+        }
     }
 }

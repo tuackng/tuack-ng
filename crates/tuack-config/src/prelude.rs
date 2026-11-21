@@ -3,7 +3,6 @@
 pub use anyhow::{Context, Result, anyhow, bail};
 pub use indexmap::IndexMap;
 pub use log::{debug, error, info, trace, warn};
-pub use owo_colors::OwoColorize;
 pub use serde::{Deserialize, Serialize};
 pub use serde_many::{AsSerde, DeserializeMany, SerializeMany};
 pub use std::collections::{BTreeMap, HashMap};
