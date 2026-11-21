@@ -28,12 +28,29 @@ allow = [
   "BSL-1.0",
   "CDLA-Permissive-2.0",
   "bzip2-1.0.6",
-  "AGPL-3.0-or-later",
 ]
+
+[[licenses.exceptions]]
+allow = ["AGPL-3.0-or-later"]
+crate = "tuack-ng"
+
+[[licenses.exceptions]]
+allow = ["AGPL-3.0-or-later"]
+crate = "tuack-utils"
+
+[[licenses.exceptions]]
+allow = ["AGPL-3.0-or-later"]
+crate = "tuack-xtask"
 
 [bans]
 multiple-versions = "deny"
 wildcards = "deny"
+deny = [
+  # 安全性相关库却严重疑似 Vibe，并且 README 写得天花乱坠
+  { crate = "strict-path", reason = "Vibe coding" },
+  { crate = "soft-canonicalize", reason = "Vibe coding" },
+  { crate = "proc-canonicalize", reason = "Vibe coding" },
+]
 skip = [
   { name = "base64", version = "=0.22.1" },
   { name = "base64", version = "=0.23.1" },
