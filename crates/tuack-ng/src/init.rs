@@ -265,14 +265,14 @@ pub fn init(verbose: &bool, cli: &crate::Cli) -> Result<()> {
     let multi = init_log(verbose)?;
     // 生成补全文件时，有可能还没有全局配置文件亦或者不合法，所以可能会失败
     // 因此，跳过初始化逻辑
-    if !matches!(&cli.command, crate::Commands::Gen(args)
+    if !matches!(&cli.command, Some(crate::Commands::Gen(args))
        if matches!(args.target, crate::generate::Targets::Complete(_)))
     {
-        let migrating = matches!(&cli.command, crate::Commands::Conf(args)
+        let migrating = matches!(&cli.command, Some(crate::Commands::Conf(args))
        if matches!(args.target, crate::conf::Targets::Migrate));
-        let validating = matches!(&cli.command, crate::Commands::Conf(args)
+        let validating = matches!(&cli.command, Some(crate::Commands::Conf(args))
        if matches!(args.target, crate::conf::Targets::Validate));
-        let quiet_plugins = matches!(cli.command, crate::Commands::Plugin(_));
+        let quiet_plugins = matches!(&cli.command, Some(crate::Commands::Plugin(_)));
 
         init_context(multi, migrating, validating, quiet_plugins)?;
     }

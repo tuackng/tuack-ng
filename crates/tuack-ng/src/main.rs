@@ -47,7 +47,7 @@ mod validate;
 )]
 struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
     #[arg(short, long, global = true)]
     /// 详细模式
     verbose: bool,
@@ -93,7 +93,60 @@ enum Commands {
     Plugin(PluginArgs),
 }
 
+/// 输出无子命令时的欢迎信息
+fn print_welcome() {
+    let title = "欢迎使用 Tuack-NG，很高兴与你相遇！❤️".bold().to_string();
+    let docs = "https://docs.tuack-ng.ink/app/project/overview.html"
+        .bold()
+        .underline()
+        .to_string();
+    let from_docs = "先阅读文档".bold().to_string();
+    let most_used = "最常使用".bold().to_string();
+    let community = "https://docs.tuack-ng.ink/community"
+        .bold()
+        .underline()
+        .to_string();
+    let gen_cmd = "tuack-ng gen <contest|day|problem|...> <名称>"
+        .cyan()
+        .bold()
+        .to_string();
+    let ren = "tuack-ng ren <模板>".cyan().bold().to_string();
+    let test = "tuack-ng test".cyan().bold().to_string();
+    let dmk = "tuack-ng dmk <data|sample> <gen|regen|reset> [对象]"
+        .cyan()
+        .bold()
+        .to_string();
+    let validate = "tuack-ng validate".cyan().bold().to_string();
+    let dump = "tuack-ng dump <目标>".cyan().bold().to_string();
+    let help = "tuack-ng --help".cyan().bold().to_string();
+
+    println!(
+        r#"{title}
+
+如果你没有使用过 Tuack-NG，可以{from_docs} <{docs}>。
+
+这里有一些 Tuack-NG 中{most_used}的命令：
+
+- 新建一个工程：{gen_cmd}
+- 渲染题面：    {ren}
+- 测试题解：    {test}
+- 生成数据：    {dmk}
+- 校验数据：    {validate}
+- 导出：        {dump}
+
+可以运行 {help} 来了解这些命令的具体用法。
+
+如果有什么疑问，欢迎加入我们的讨论社区 <{community}>。
+
+祝你好运！"#
+    );
+}
 fn tuack_ng(cli: Cli) -> Result<()> {
+    if cli.command.is_none() {
+        print_welcome();
+        return Ok(());
+    }
+
     init::init(
         &{
             #[cfg(debug_assertions)]
@@ -112,7 +165,7 @@ fn tuack_ng(cli: Cli) -> Result<()> {
         debug!("当前目录 {}", cwd.display());
     }
 
-    match cli.command {
+    match cli.command.expect("已在入口检查子命令") {
         Commands::Ren(args) => ren::main(args),
         Commands::Gen(args) => generate::main(args),
         Commands::Test(args) => test::main(args),
