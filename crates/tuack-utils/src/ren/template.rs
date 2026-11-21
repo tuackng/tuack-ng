@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::ren::tools;
+use crate::utils::resolve_within;
 use anyhow::Result;
 use minijinja::value::Serde;
 use minijinja::{Environment, Value, context};
@@ -57,7 +58,13 @@ fn handle_sample(
 
     let input_file = &sample_item.input_path();
 
-    let input_path = base_path.join("sample").join(input_file);
+    let input_path =
+        resolve_within(base_path, &Path::new("sample").join(input_file)).map_err(|error| {
+            minijinja::Error::new(
+                minijinja::ErrorKind::InvalidOperation,
+                format!("无法解析样例 {sample_id} 的输入文件：{error:#}"),
+            )
+        })?;
     if input_path.exists() {
         match fs::read_to_string(&input_path) {
             Ok(content) => {
@@ -91,7 +98,13 @@ fn handle_sample(
 
     let output_file = &sample_item.output_path();
 
-    let output_path = base_path.join("sample").join(output_file);
+    let output_path =
+        resolve_within(base_path, &Path::new("sample").join(output_file)).map_err(|error| {
+            minijinja::Error::new(
+                minijinja::ErrorKind::InvalidOperation,
+                format!("无法解析样例 {sample_id} 的输出文件：{error:#}"),
+            )
+        })?;
     if output_path.exists() {
         match fs::read_to_string(&output_path) {
             Ok(content) => {
@@ -156,7 +169,12 @@ fn handle_lua_table(
     day: &ContestDayConfig,
     contest: &ContestConfig,
 ) -> Result<String, minijinja::Error> {
-    let full_path = problem.path.join(&path);
+    let full_path = resolve_within(&problem.path, Path::new(&path)).map_err(|error| {
+        minijinja::Error::new(
+            minijinja::ErrorKind::InvalidOperation,
+            format!("无法解析 Lua 表格 {path}：{error:#}"),
+        )
+    })?;
     super::lua::render_template(&full_path, problem, day, contest).map_err(|e| {
         minijinja::Error::new(
             minijinja::ErrorKind::InvalidOperation,

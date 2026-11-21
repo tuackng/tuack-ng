@@ -166,12 +166,16 @@ fn entry_path(package: &crate::plugin::manager::PluginPackage) -> Result<PathBuf
         .as_ref()
         .context("插件未声明 entry（wasm 入口）")?;
     crate::utils::resolve_within(&package.dir, entry)
+        .with_context(|| format!("无法解析插件 entry（{}）", entry.display()))
 }
 
 /// 取插件的资源目录宿主路径（约束在包目录内，且不经符号链接逃逸）。
 fn resolve_asset_dir(package: &crate::plugin::manager::PluginPackage) -> Result<Option<PathBuf>> {
     match &package.asset_dir {
-        Some(dir) => Ok(Some(crate::utils::resolve_within(&package.dir, dir)?)),
+        Some(dir) => Ok(Some(
+            crate::utils::resolve_within(&package.dir, dir)
+                .with_context(|| format!("无法解析插件资源目录（{}）", dir.display()))?,
+        )),
         None => Ok(None),
     }
 }

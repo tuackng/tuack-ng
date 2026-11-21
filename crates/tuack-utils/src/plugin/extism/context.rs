@@ -311,6 +311,7 @@ pub(crate) fn common_imports() -> Vec<extism::Function> {
 fn resolve_within(base: &Path, rel: &str) -> Result<PathBuf> {
     let stripped = rel.strip_prefix('/').unwrap_or(rel);
     crate::utils::resolve_within(base, Path::new(stripped))
+        .with_context(|| format!("无法解析工作区路径（{rel}）"))
 }
 
 /// 判断 WASI 风格路径是否落在只读资源挂载下（`/assets` 或 `/assets/...`）。
@@ -338,34 +339,37 @@ pub(crate) fn specs_to_outputs(
     out_dir: &Path,
     keepalive: Arc<tempfile::TempDir>,
 ) -> Result<Vec<OutputFile>> {
+    let base = out_dir.clean();
     let mut guard = streams.lock().unwrap();
     let mut files = Vec::new();
     for spec in specs {
         match spec {
             OutputSpec::Asset { path, asset_id } => {
-                let path = crate::utils::normalize_within(out_dir, &path)?;
+                let rel = crate::utils::resolve_relative_within(&base, &path)
+                    .with_context(|| format!("无法解析产物路径（{}）", path.display()))?;
                 let stream = guard
                     .remove(&asset_id)
                     .ok_or(AssetError::InvalidHandle(asset_id))?;
                 files.push(OutputFile::File {
-                    path,
+                    path: rel,
                     bytes: stream,
                 });
             }
             OutputSpec::File { path } => {
-                let rel = crate::utils::normalize_within(out_dir, &path)?;
-                let dest = out_dir.join(&rel);
-                crate::utils::assert_within(out_dir, &dest)?;
-                let file = std::fs::File::open(&dest)
-                    .with_context(|| format!("打开产物文件失败：{}", dest.display()))?;
+                let rel = crate::utils::resolve_relative_within(&base, &path)
+                    .with_context(|| format!("无法解析产物路径（{}）", path.display()))?;
+                let absolute = base.join(&rel);
+                let file = std::fs::File::open(&absolute)
+                    .with_context(|| format!("打开产物文件失败（{}）", absolute.display()))?;
                 files.push(OutputFile::File {
                     path: rel,
                     bytes: Box::new(KeepAliveReader::new(file, keepalive.clone())),
                 });
             }
             OutputSpec::Dir(path) => {
-                let path = crate::utils::normalize_within(out_dir, &path)?;
-                files.push(OutputFile::Dir(path));
+                let rel = crate::utils::resolve_relative_within(&base, &path)
+                    .with_context(|| format!("无法解析产物路径（{}）", path.display()))?;
+                files.push(OutputFile::Dir(rel));
             }
         }
     }

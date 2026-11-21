@@ -163,7 +163,8 @@ fn build_render_document(
             problem_config.path.clone(),
             params,
         )
-        .with_context(|| format!("读取题面文件/展开模板失败：{}", statement_path.display()))?;
+        .with_context(|| format!("读取题面文件/展开模板失败（{}）", statement_path.display()))
+        .map_err(|error| user_error!("{error:#}"))?;
 
         if !warnings.is_empty() {
             let joined = warnings

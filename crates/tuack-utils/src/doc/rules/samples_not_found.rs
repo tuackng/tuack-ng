@@ -1,6 +1,7 @@
 use crate::{
     doc::rules::{CheckImportance, CheckInfo, CheckManifest, CheckResult, CheckRule},
     prelude::*,
+    utils::resolve_within,
 };
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -57,20 +58,46 @@ impl CheckRule for SamplesNotFound {
             }
 
             let mut missing_files = Vec::new();
+            let mut path_errors = Vec::new();
 
             // 检查输入文件
             let input_path = sample.input_path();
-
-            let path = problem_config.path.join("sample").join(&input_path);
-            if !path.exists() {
-                missing_files.push(format!("输入文件 {}", input_path));
+            match resolve_within(&problem_config.path, &Path::new("sample").join(&input_path)) {
+                Ok(path) if !path.exists() => {
+                    missing_files.push(format!("输入文件 {}", input_path));
+                }
+                Ok(_) => {}
+                Err(error) => {
+                    path_errors.push(format!("输入文件 {input_path}：{error:#}"));
+                }
             }
 
             // 检查输出文件
             let output_path = sample.output_path();
-            let path = problem_config.path.join("sample").join(&output_path);
-            if !path.exists() {
-                missing_files.push(format!("输出文件 {}", output_path));
+            match resolve_within(
+                &problem_config.path,
+                &Path::new("sample").join(&output_path),
+            ) {
+                Ok(path) if !path.exists() => {
+                    missing_files.push(format!("输出文件 {}", output_path));
+                }
+                Ok(_) => {}
+                Err(error) => {
+                    path_errors.push(format!("输出文件 {output_path}：{error:#}"));
+                }
+            }
+
+            if !path_errors.is_empty() {
+                messages.push(CheckInfo::new(
+                    Some(span),
+                    format!(
+                        "sample.text({}) 的路径不合法：{}",
+                        id,
+                        path_errors.join("；")
+                    ),
+                    CheckImportance::Error,
+                ));
+                continue;
             }
 
             if !missing_files.is_empty() {

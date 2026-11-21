@@ -1,9 +1,12 @@
 use crate::prelude::*;
+use crate::utils::resolve_within;
 use tuack_lib::data::Reader;
 use tuack_lib::utils::asset::AssetProvider;
 
 /// 文件系统资源提供方：登记"题目编号 -> 题目路径"映射，供 [`AssetProvider`] 按题目
 /// 编号与相对路径取资源；打开文件返回字节流，惰性打开不预载内容。
+///
+/// 资源路径须在题目目录内：绝对路径、越界和符号链接都会被拒绝。
 pub struct FsAssetProvider {
     /// 题目编号 -> 题目路径
     dirs: HashMap<u64, PathBuf>,
@@ -30,22 +33,12 @@ impl Default for FsAssetProvider {
 
 impl AssetProvider for FsAssetProvider {
     fn load(&self, idx: u64, path: &Path) -> Result<Box<dyn Reader>> {
-        use std::path::Component;
-
         let base = self
             .dirs
             .get(&idx)
             .context(format!("题目 {} 未登记资源目录", idx))?;
-        let traversal = path.components().any(|c| {
-            matches!(
-                c,
-                Component::ParentDir | Component::RootDir | Component::Prefix(_)
-            )
-        });
-        if traversal {
-            bail!("资源路径不合法：{}，不允许目录穿越", path.display());
-        }
-        let src = base.join(path);
+        let src = resolve_within(base, path)
+            .with_context(|| format!("资源路径不合法（{}）", path.display()))?;
         let file = std::fs::File::open(&src)
             .with_context(|| format!("打开资源失败：{}", src.display()))?;
         Ok(Box::new(file))

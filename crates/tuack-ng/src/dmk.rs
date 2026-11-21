@@ -195,16 +195,28 @@ fn save_seed(target_dir: &Path, seeds: &BTreeMap<u32, u64>) -> Result<()> {
 
 /// 查找标程（tests 中期望得分 == 100 的文件）
 fn find_std(problem: &ProblemConfig) -> Result<PathBuf> {
+    let mut error = None;
     for (name, case) in &problem.tests {
         if let ExpectedScore::Single(str) = &case.expected
             && str.replace(' ', "") == "==100"
-            && let Ok(path) = resolve_problem_file(problem, &case.path)
         {
-            info!("找到标程 {name}, 位置 {}", path.display());
-            return Ok(path);
+            match resolve_problem_file(problem, &case.path)
+                .with_context(|| format!("无法解析标程 {name}（{}）", case.path))
+            {
+                Ok(path) => {
+                    info!("找到标程 {name}, 位置 {}", path.display());
+                    return Ok(path);
+                }
+                Err(e) => {
+                    error.get_or_insert(e);
+                }
+            }
         }
     }
 
+    if let Some(error) = error {
+        user_bail!("{error:#}");
+    }
     user_bail!("未找到标程文件")
 }
 
@@ -243,7 +255,7 @@ pub fn main(args: DmkArgs) -> Result<()> {
             user_bail!("本命令只能在题目目录下执行");
         };
 
-    let selected: Vec<FsTestData> = problem_data_items(current_problem, args.target);
+    let selected: Vec<FsTestData> = problem_data_items(current_problem, args.target)?;
     let selected = parse_test_object(&args.object, &selected, FsTestData::id)?;
 
     if selected.is_empty() {
@@ -267,9 +279,11 @@ pub fn main(args: DmkArgs) -> Result<()> {
     };
 
     let gen_path = resolve_problem_file(current_problem, &generator_config.source)
-        .with_context(|| format!("无法解析数据生成器源文件：{}", generator_config.source))?;
-    let deps =
-        read_deps(current_problem, &generator_config.deps).context("无法读取数据生成器依赖")?;
+        .with_context(|| format!("无法解析数据生成器源文件（{}）", generator_config.source))
+        .map_err(|error| user_error!("{error:#}"))?;
+    let deps = read_deps(current_problem, &generator_config.deps)
+        .context("无法读取数据生成器依赖")
+        .map_err(|error| user_error!("{error:#}"))?;
 
     let mut generator = with_spinner("编译数据生成器", || {
         let mut generator = CppGenerator::new(&gen_path, &current_day.compile, deps)?;

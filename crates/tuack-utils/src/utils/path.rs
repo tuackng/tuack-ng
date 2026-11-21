@@ -1,63 +1,80 @@
-//! 路径安全校验：约束在基准目录内，拒绝绝对路径、`..` 越界与符号链接逃逸。
+//! 路径安全校验：把相对路径约束在可信基准目录内。
+
+use std::path::Component;
 
 use path_clean::PathClean;
 
 use crate::prelude::*;
 
-/// 校验 `rel` 为相对路径且规范化后不越出 `base`，返回相对 `base` 的规范化路径。
+/// 将 `rel` 解析为 `base` 下的绝对路径，并确认它不会逃出 `base`。
 ///
-/// 纯词法校验，不访问文件系统，因此目标路径可以不存在。
+/// 词法上拒绝绝对路径与 `..` 越界；文件系统上逐段拒绝符号链接。
+/// `base` 及其祖先视为可信边界，只检查 `base` 以下的分量。目标路径可以不存在。
+///
+/// 只提供路径检查，不保证检查与后续打开之间路径未被替换（TOCTOU）。需要相对路径时用
+/// [`resolve_relative_within`]。
 ///
 /// # Errors
 ///
-/// `rel` 为绝对路径，或规范化后越出 `base`（含 `..` 向上越界）时返回 `Err`。
-pub fn normalize_within(base: &Path, rel: &Path) -> Result<PathBuf> {
-    if rel.is_absolute() {
-        bail!("路径必须为相对路径：{}", rel.display());
-    }
+/// `rel` 为绝对路径、规范化后越出 `base`、含符号链接，或检查路径时遇到除
+/// [`std::io::ErrorKind::NotFound`] 以外的文件系统错误时返回 `Err`。
+pub fn resolve_within(base: &Path, rel: &Path) -> Result<PathBuf> {
     let base = base.clean();
-    let dest = base.join(rel).clean();
-    dest.strip_prefix(&base)
-        .map(Path::to_path_buf)
-        .map_err(|_| anyhow!("路径越出基准目录：{}", rel.display()))
+    let rel = resolve_relative_within(&base, rel)?;
+    Ok(base.join(rel))
 }
 
-/// 校验 `path`（已词法约束在 `base` 内）不含符号链接，防止经软链越界读写。
+/// 将 `rel` 校验为位于 `base` 内的相对路径。
 ///
-/// 逐段 `symlink_metadata`（不跟随），对悬空软链同样有效；普通文件/目录或尚不存在的
-/// 分量放行。
+/// 与 [`resolve_within`] 做同样的词法、越界和符号链接检查，但返回相对 `base` 的路径，
+/// 不再拼接 `base`。`base` 及其祖先视为可信边界；目标路径可以不存在。
+///
+/// 只提供路径检查，不保证检查与后续打开之间路径未被替换（TOCTOU）。
 ///
 /// # Errors
 ///
-/// `path` 不在 `base` 内，或任一分量为符号链接（含中间目录与悬空软链）时返回 `Err`。
-pub fn assert_within(base: &Path, path: &Path) -> Result<()> {
+/// `rel` 为绝对路径、规范化后越出 `base`、含符号链接，或检查路径时遇到除
+/// [`std::io::ErrorKind::NotFound`] 以外的文件系统错误时返回 `Err`。
+pub fn resolve_relative_within(base: &Path, rel: &Path) -> Result<PathBuf> {
     let base = base.clean();
-    let rel = path
-        .strip_prefix(&base)
-        .map_err(|_| anyhow!("路径越出基准目录：{}", path.display()))?;
-    let mut cur = base;
-    for comp in rel.components() {
-        cur.push(comp);
-        if let Ok(meta) = fs::symlink_metadata(&cur)
-            && meta.file_type().is_symlink()
-        {
-            bail!("路径含符号链接：{}", cur.display());
+    let rel = normalize_relative(&base, rel)?;
+    reject_symlink_components(&base, &rel)?;
+    Ok(rel)
+}
+
+/// 规范化 `rel` 并确认它位于 `base` 内，返回相对 `base` 的路径。
+fn normalize_relative(base: &Path, rel: &Path) -> Result<PathBuf> {
+    let rel = rel.clean();
+    if rel
+        .components()
+        .any(|component| matches!(component, Component::Prefix(_) | Component::RootDir))
+    {
+        bail!("路径必须为相对路径");
+    }
+    let dest = base.join(&rel).clean();
+    dest.strip_prefix(base)
+        .map(Path::to_path_buf)
+        .map_err(|_| anyhow!("路径越出基准目录"))
+}
+
+/// 从 `base` 开始逐段检查 `rel` 的每个分量，不跟随符号链接。
+fn reject_symlink_components(base: &Path, rel: &Path) -> Result<()> {
+    let mut current = base.to_path_buf();
+    for component in rel.components() {
+        current.push(component);
+        match fs::symlink_metadata(&current) {
+            Ok(metadata) if metadata.file_type().is_symlink() => {
+                bail!("路径含符号链接（{}）", current.display());
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => {
+                return Err(error)
+                    .with_context(|| format!("检查路径失败（{}）", current.display()));
+            }
         }
     }
     Ok(())
-}
-
-/// 依次调用 [`normalize_within`] 与 [`assert_within`]，返回 `base` 下的规范化路径。
-///
-/// # Errors
-///
-/// 词法越界（绝对路径或 `..` 越界）或路径含符号链接时返回 `Err`；目标路径可以不存在。
-pub fn resolve_within(base: &Path, rel: &Path) -> Result<PathBuf> {
-    let base = base.clean();
-    let rel = normalize_within(&base, rel)?;
-    let path = base.join(&rel);
-    assert_within(&base, &path)?;
-    Ok(path)
 }
 
 #[cfg(test)]
@@ -65,53 +82,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn normalize_within_rejects_absolute_and_escape() {
+    fn resolves_relative_path_and_rejects_escape() {
         let base = Path::new("/tmp/base");
-        assert!(normalize_within(base, Path::new("a/b")).is_ok());
-        assert!(normalize_within(base, Path::new("/abs")).is_err());
-        assert!(normalize_within(base, Path::new("../x")).is_err());
-        assert!(normalize_within(base, Path::new("a/../../x")).is_err());
+        assert_eq!(
+            resolve_within(base, Path::new("a/b")).unwrap(),
+            base.join("a/b")
+        );
+        assert_eq!(
+            resolve_relative_within(base, Path::new("a/b")).unwrap(),
+            Path::new("a/b")
+        );
+        assert!(resolve_within(base, Path::new("/abs")).is_err());
+        assert!(resolve_within(base, Path::new("../x")).is_err());
+        assert!(resolve_within(base, Path::new("a/../../x")).is_err());
     }
 
     #[cfg(unix)]
     #[test]
-    fn assert_within_rejects_symlinks() {
+    fn rejects_symlink_components() {
         use std::os::unix::fs::symlink;
 
         let tmp = tempfile::tempdir().unwrap();
         let base = tmp.path();
         let outside = tempfile::tempdir().unwrap();
 
-        // 普通路径与尚不存在的路径放行
-        assert!(assert_within(base, &base.join("a/b")).is_ok());
+        assert!(resolve_within(base, Path::new("missing/file")).is_ok());
 
-        // 指向外部已存在目标的软链
         std::fs::write(outside.path().join("secret"), b"x").unwrap();
         symlink(outside.path().join("secret"), base.join("link")).unwrap();
-        assert!(assert_within(base, &base.join("link")).is_err());
+        assert!(resolve_within(base, Path::new("link")).is_err());
 
-        // 悬空软链（旧 canonicalize 实现会漏掉）
         symlink(outside.path().join("missing"), base.join("dangling")).unwrap();
-        assert!(assert_within(base, &base.join("dangling")).is_err());
+        assert!(resolve_within(base, Path::new("dangling")).is_err());
 
-        // 中间目录为软链
         symlink(outside.path(), base.join("dir")).unwrap();
-        assert!(assert_within(base, &base.join("dir/x")).is_err());
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn resolve_within_returns_path_and_rejects_symlink() {
-        use std::os::unix::fs::symlink;
-
-        let tmp = tempfile::tempdir().unwrap();
-        let base = tmp.path();
-        assert_eq!(
-            resolve_within(base, Path::new("out/x")).unwrap(),
-            base.join("out/x")
-        );
-
-        symlink("/etc/passwd", base.join("evil")).unwrap();
-        assert!(resolve_within(base, Path::new("evil")).is_err());
+        assert!(resolve_within(base, Path::new("dir/x")).is_err());
     }
 }

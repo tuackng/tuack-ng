@@ -63,7 +63,7 @@ fn validate_problem(
     object: &str,
     in_problem: bool,
 ) -> Result<bool> {
-    let data_items = problem_data_items(problem_config, target);
+    let data_items = problem_data_items(problem_config, target)?;
     let data_items =
         crate::utils::test_object::parse_test_object(object, &data_items, FsTestData::id)?;
 

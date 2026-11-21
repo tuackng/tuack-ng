@@ -7,6 +7,7 @@ use tuack_lib::dump::{
     DumpSubtask, ScorePolicy,
 };
 use tuack_utils::assets::FsAssetProvider;
+use tuack_utils::utils::resolve_relative_within;
 use walkdir::WalkDir;
 
 #[derive(Args, Debug)]
@@ -54,18 +55,39 @@ fn build_dump_document(
     for (idx, (_, prob)) in day.subconfig.iter().enumerate() {
         assets.register(idx as u64, prob.path.clone());
 
-        let data = prob
+        let data_base = prob.path.join("data");
+        let data = match prob
             .runtime
             .data
             .iter()
-            .map(|case| DumpCase {
-                id: case.id,
-                score: case.score,
-                subtask: case.subtask,
-                input: PathBuf::from(format!("data/{}", case.input)),
-                output: PathBuf::from(format!("data/{}", case.output)),
+            .map(|case| {
+                let input = resolve_relative_within(&data_base, Path::new(&case.input))
+                    .with_context(|| {
+                        format!(
+                            "无法解析题目 {} 的数据点 {} 输入文件 {}",
+                            prob.name, case.id, case.input
+                        )
+                    })?;
+                let output = resolve_relative_within(&data_base, Path::new(&case.output))
+                    .with_context(|| {
+                        format!(
+                            "无法解析题目 {} 的数据点 {} 输出文件 {}",
+                            prob.name, case.id, case.output
+                        )
+                    })?;
+                Ok(DumpCase {
+                    id: case.id,
+                    score: case.score,
+                    subtask: case.subtask,
+                    input: Path::new("data").join(input),
+                    output: Path::new("data").join(output),
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>>>()
+        {
+            Ok(data) => data,
+            Err(error) => user_bail!("{error:#}"),
+        };
 
         let subtasks = prob
             .runtime
@@ -87,14 +109,37 @@ fn build_dump_document(
             })
             .collect();
 
-        let samples = prob
+        let sample_base = prob.path.join("sample");
+        let samples = match prob
             .samples
             .iter()
-            .map(|s| DumpSample {
-                input: PathBuf::from(format!("sample/{}", s.input_path())),
-                output: PathBuf::from(format!("sample/{}", s.output_path())),
+            .map(|s| {
+                let input_path = s.input_path();
+                let output_path = s.output_path();
+                let input = resolve_relative_within(&sample_base, Path::new(&input_path))
+                    .with_context(|| {
+                        format!(
+                            "无法解析题目 {} 的样例 {} 输入文件 {}",
+                            prob.name, s.id, input_path
+                        )
+                    })?;
+                let output = resolve_relative_within(&sample_base, Path::new(&output_path))
+                    .with_context(|| {
+                        format!(
+                            "无法解析题目 {} 的样例 {} 输出文件 {}",
+                            prob.name, s.id, output_path
+                        )
+                    })?;
+                Ok(DumpSample {
+                    input: Path::new("sample").join(input),
+                    output: Path::new("sample").join(output),
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>>>()
+        {
+            Ok(samples) => samples,
+            Err(error) => user_bail!("{error:#}"),
+        };
 
         let checker = prob.checker.as_ref().map(|c| DumpChecker {
             source: PathBuf::from(&c.data.source),

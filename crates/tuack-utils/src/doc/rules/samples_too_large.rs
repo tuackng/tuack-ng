@@ -4,6 +4,7 @@ use crate::{
         FormatRule, RuleFile,
     },
     prelude::*,
+    utils::resolve_within,
 };
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -82,8 +83,9 @@ impl FormatRule for SamplesTooLarge {
 
                 // 检查输入文件
                 let input_path = sample.input_path();
-                let path = problem_config.path.join("sample").join(input_path);
-                if let Ok((exceed, _)) = check_file_limits(&path)
+                if let Ok(path) =
+                    resolve_within(&problem_config.path, &Path::new("sample").join(&input_path))
+                    && let Ok((exceed, _)) = check_file_limits(&path)
                     && exceed
                 {
                     should_replace = true;
@@ -91,8 +93,10 @@ impl FormatRule for SamplesTooLarge {
 
                 // 检查输出文件
                 let output_path = sample.output_path();
-                let path = problem_config.path.join("sample").join(output_path);
-                if let Ok((exceed, _)) = check_file_limits(&path)
+                if let Ok(path) = resolve_within(
+                    &problem_config.path,
+                    &Path::new("sample").join(&output_path),
+                ) && let Ok((exceed, _)) = check_file_limits(&path)
                     && exceed
                 {
                     should_replace = true;
@@ -153,7 +157,11 @@ impl CheckRule for SamplesTooLarge {
 
                 // 检查输入文件
                 let input_path = sample.input_path();
-                let path = problem_config.path.join("sample").join(&input_path);
+                let Ok(path) =
+                    resolve_within(&problem_config.path, &Path::new("sample").join(&input_path))
+                else {
+                    continue;
+                };
                 if let Ok((exceed, violation)) = check_file_limits(&path)
                     && exceed
                 {
@@ -162,7 +170,12 @@ impl CheckRule for SamplesTooLarge {
 
                 // 检查输出文件
                 let output_path = sample.output_path();
-                let path = problem_config.path.join("sample").join(&output_path);
+                let Ok(path) = resolve_within(
+                    &problem_config.path,
+                    &Path::new("sample").join(&output_path),
+                ) else {
+                    continue;
+                };
                 if let Ok((exceed, violation)) = check_file_limits(&path)
                     && exceed
                 {

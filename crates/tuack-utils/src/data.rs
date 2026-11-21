@@ -2,12 +2,17 @@ use std::io;
 use std::path::PathBuf;
 
 use crate::prelude::*;
+use crate::utils::resolve_within;
 use tuack_config::{DmkConfig, ExpandedDataItem, ExpandedSampleItem, ProblemConfig};
 use tuack_lib::data::{Data, DataMut, DmkItem, Reader};
 use tuack_lib::utils::testlib::Arg;
 
 /// 构造正式数据的 [`FsTestData`] 列表（从 `data/` 读取）。
-pub fn problem_test_data(problem: &ProblemConfig) -> Vec<FsTestData<'_>> {
+///
+/// # Errors
+///
+/// 数据点路径为绝对路径、越出 `data/`、含符号链接时返回 `Err`。
+pub fn problem_test_data(problem: &ProblemConfig) -> Result<Vec<FsTestData<'_>>> {
     problem
         .runtime
         .data
@@ -17,7 +22,11 @@ pub fn problem_test_data(problem: &ProblemConfig) -> Vec<FsTestData<'_>> {
 }
 
 /// 构造样例数据的 [`FsTestData`] 列表（从 `sample/` 读取）。
-pub fn problem_sample_data(problem: &ProblemConfig) -> Vec<FsTestData<'_>> {
+///
+/// # Errors
+///
+/// 样例路径为绝对路径、越出 `sample/`、含符号链接时返回 `Err`。
+pub fn problem_sample_data(problem: &ProblemConfig) -> Result<Vec<FsTestData<'_>>> {
     problem
         .runtime
         .samples
@@ -33,40 +42,47 @@ enum TestItemRef<'a> {
     Sample(&'a ExpandedSampleItem),
 }
 
-/// 从文件系统读取的测试数据，持有基础目录与对配置项的引用
+/// 从文件系统读取的测试数据，持有已解析的输入输出路径与对配置项的引用
 #[derive(Clone)]
 pub struct FsTestData<'a> {
-    base_dir: PathBuf,
+    input: PathBuf,
+    output: PathBuf,
     item: TestItemRef<'a>,
 }
 
 impl<'a> FsTestData<'a> {
-    pub fn from_data(base_dir: PathBuf, item: &'a ExpandedDataItem) -> Self {
-        Self {
-            base_dir,
+    /// 从正式数据项构造；输入输出路径须在 `base_dir` 内。
+    ///
+    /// # Errors
+    ///
+    /// 输入或输出路径为绝对路径、越出 `base_dir`、含符号链接时返回 `Err`。
+    pub fn from_data(base_dir: PathBuf, item: &'a ExpandedDataItem) -> Result<Self> {
+        let input = resolve_within(&base_dir, Path::new(&item.input))
+            .with_context(|| format!("无法解析数据点 {} 的输入文件 {}", item.id, item.input))?;
+        let output = resolve_within(&base_dir, Path::new(&item.output))
+            .with_context(|| format!("无法解析数据点 {} 的输出文件 {}", item.id, item.output))?;
+        Ok(Self {
+            input,
+            output,
             item: TestItemRef::Data(item),
-        }
+        })
     }
 
-    pub fn from_sample(base_dir: PathBuf, item: &'a ExpandedSampleItem) -> Self {
-        Self {
-            base_dir,
+    /// 从样例项构造；输入输出路径须在 `base_dir` 内。
+    ///
+    /// # Errors
+    ///
+    /// 输入或输出路径为绝对路径、越出 `base_dir`、含符号链接时返回 `Err`。
+    pub fn from_sample(base_dir: PathBuf, item: &'a ExpandedSampleItem) -> Result<Self> {
+        let input = resolve_within(&base_dir, Path::new(&item.input))
+            .with_context(|| format!("无法解析样例 {} 的输入文件 {}", item.id, item.input))?;
+        let output = resolve_within(&base_dir, Path::new(&item.output))
+            .with_context(|| format!("无法解析样例 {} 的输出文件 {}", item.id, item.output))?;
+        Ok(Self {
+            input,
+            output,
             item: TestItemRef::Sample(item),
-        }
-    }
-
-    fn input_name(&self) -> &str {
-        match &self.item {
-            TestItemRef::Data(item) => &item.input,
-            TestItemRef::Sample(item) => &item.input,
-        }
-    }
-
-    fn answer_name(&self) -> &str {
-        match &self.item {
-            TestItemRef::Data(item) => &item.output,
-            TestItemRef::Sample(item) => &item.output,
-        }
+        })
     }
 
     /// 该测试点的生成行为
@@ -88,13 +104,13 @@ impl<'a> FsTestData<'a> {
     }
 
     /// 输入文件的完整路径
-    pub fn input_path(&self) -> PathBuf {
-        self.base_dir.join(self.input_name())
+    pub fn input_path(&self) -> &Path {
+        &self.input
     }
 
     /// 输出文件的完整路径
-    pub fn output_path(&self) -> PathBuf {
-        self.base_dir.join(self.answer_name())
+    pub fn output_path(&self) -> &Path {
+        &self.output
     }
 
     /// 该测试点的满分（样例约定每点 1 分）
@@ -124,12 +140,12 @@ impl<'a> FsTestData<'a> {
 
 impl Data for FsTestData<'_> {
     fn input(&self) -> io::Result<Box<dyn Reader>> {
-        let f = std::fs::File::open(self.base_dir.join(self.input_name()))?;
+        let f = std::fs::File::open(&self.input)?;
         Ok(Box::new(f))
     }
 
     fn answer(&self) -> io::Result<Box<dyn Reader>> {
-        let f = std::fs::File::open(self.base_dir.join(self.answer_name()))?;
+        let f = std::fs::File::open(&self.output)?;
         Ok(Box::new(f))
     }
 }

@@ -7,6 +7,7 @@ use tuack_lib::problem::{ProblemMeta, ProblemType};
 use tuack_utils::data::FsTestData;
 use tuack_utils::runners::cpp::CppRunner;
 use tuack_utils::runners::general::GeneralRunner;
+use tuack_utils::utils::resolve_within;
 
 /// 返回题目运行时的 [`IoMode`]：`file_io` 未配置时按文件 IO（输入输出文件名为 `<name>.in` / `<name>.out`）。
 pub fn io_mode(problem: &ProblemConfig) -> IoMode {
@@ -21,31 +22,39 @@ pub fn io_mode(problem: &ProblemConfig) -> IoMode {
 }
 
 /// 按目标返回题目的数据项列表。
-pub fn problem_data_items(problem: &ProblemConfig, target: Target) -> Vec<FsTestData<'_>> {
-    match target {
-        Target::Data => tuack_utils::data::problem_test_data(problem),
-        Target::Sample => tuack_utils::data::problem_sample_data(problem),
-    }
-}
-
-/// 把题目目录下的路径解析为规范绝对路径。
-///
-/// 绝对路径原样使用，相对路径基于题目目录。
 ///
 /// # Errors
 ///
-/// 路径无法解析，或目标不是普通文件时返回 `Err`。
+/// 数据点或样例的路径不在对应目录内时返回 `Err`。
+pub fn problem_data_items(problem: &ProblemConfig, target: Target) -> Result<Vec<FsTestData<'_>>> {
+    Ok(match target {
+        Target::Data => tuack_utils::data::problem_test_data(problem),
+        Target::Sample => tuack_utils::data::problem_sample_data(problem),
+    }
+    .with_context(|| format!("无法解析题目 {} 的数据路径", problem.name))
+    .map_err(|error| user_error!("{error:#}"))?)
+}
+
+/// 把题目目录下的路径解析为题目目录内的绝对路径。
+///
+/// 路径必须相对题目目录，且不能越出题目目录或经过符号链接。
+///
+/// # Errors
+///
+/// 路径为绝对路径、越出题目目录、含符号链接、目标不存在或不是普通文件时返回 `Err`。
 pub fn resolve_problem_file(problem: &ProblemConfig, path: &str) -> Result<PathBuf> {
-    let path = PathBuf::from(path);
-    let joined = if path.is_absolute() {
-        path
-    } else {
-        problem.path.join(path)
+    let resolved = resolve_within(&problem.path, Path::new(path))?;
+    let metadata = match fs::metadata(&resolved) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            bail!("文件不存在");
+        }
+        Err(error) => {
+            return Err(error).context("读取文件元数据失败");
+        }
     };
-    let resolved = dunce::canonicalize(&joined)
-        .with_context(|| format!("路径无法解析：{}", joined.display()))?;
-    if !resolved.is_file() {
-        bail!("目标不是普通文件：{}", resolved.display());
+    if !metadata.is_file() {
+        bail!("不是普通文件");
     }
     Ok(resolved)
 }
@@ -60,9 +69,10 @@ pub fn resolve_problem_file(problem: &ProblemConfig, path: &str) -> Result<PathB
 pub fn read_deps(problem: &ProblemConfig, deps: &[String]) -> Result<IndexMap<String, Vec<u8>>> {
     let mut files = IndexMap::new();
     for dep in deps {
-        let path = resolve_problem_file(problem, dep)?;
+        let path = resolve_problem_file(problem, dep)
+            .with_context(|| format!("无法解析依赖文件 {dep}"))?;
         let content =
-            fs::read(&path).with_context(|| format!("读取文件失败：{}", path.display()))?;
+            fs::read(&path).with_context(|| format!("读取文件 {} 失败", path.display()))?;
         let name = Path::new(dep)
             .file_name()
             .with_context(|| format!("依赖路径没有文件名：{}", dep))?

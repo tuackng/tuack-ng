@@ -501,7 +501,7 @@ pub fn test_problem(
     target: Target,
     in_problem: bool,
 ) -> Result<bool> {
-    let data_items = problem_data_items(problem_config, target);
+    let data_items = problem_data_items(problem_config, target)?;
     let is_sample = matches!(target, Target::Sample);
 
     // 该题目的满分：正式数据按 Subtask 满分之和，样例按数据点个数
@@ -540,8 +540,9 @@ pub fn test_problem(
             let source_path =
                 resolve_problem_file(problem_config, &chk_config.source).map_err(|error| {
                     user_error!(
-                        "无法解析题目 {} 的 Checker 源文件：{error:#}",
-                        problem_config.name.magenta()
+                        "无法解析题目 {} 的 Checker 源文件（{}）：{error:#}",
+                        problem_config.name.magenta(),
+                        chk_config.source
                     )
                 })?;
             let deps = read_deps(problem_config, &chk_config.deps).map_err(|error| {
