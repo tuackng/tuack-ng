@@ -1,21 +1,15 @@
-use clap::{Args, ValueEnum};
-use indicatif::ProgressBar;
+use clap::Args;
+use indicatif::{ProgressBar, ProgressIterator};
 use owo_colors::OwoColorize;
-use std::time::Duration;
 
 use crate::prelude::*;
+use crate::utils::problem::{problem_data_items, read_deps, resolve_problem_file};
+use crate::utils::progress::with_spinner;
+use crate::utils::target::Target;
 use tuack_lib::data::Data;
 use tuack_lib::utils::testlib::{Validator, ValidatorResult};
 use tuack_utils::data::FsTestData;
 use tuack_utils::validators::cpp::CppValidator;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum Target {
-    /// 正式测试数据
-    Data,
-    /// 样例数据
-    Sample,
-}
 
 #[derive(Args, Debug)]
 #[command(version)]
@@ -47,35 +41,19 @@ pub fn compile_validator(
         None => user_bail!("Validator 未配置"),
     };
 
-    let resolve = |path: &str| problem_config.path.join(path);
-    let source_path = resolve(&val_config.source);
+    let source_path = resolve_problem_file(problem_config, &val_config.source)
+        .with_context(|| format!("无法解析 Validator 源文件：{}", val_config.source))?;
+    let deps = read_deps(problem_config, &val_config.deps).context("无法读取 Validator 依赖")?;
 
-    if !source_path.exists() {
-        user_bail!("Validator 不存在：{}", source_path.display());
-    }
-
-    let mut deps: IndexMap<String, Vec<u8>> = IndexMap::new();
-    for dep_path in &val_config.deps {
-        let abs = resolve(dep_path);
-        let content =
-            fs::read(&abs).with_context(|| format!("Validator 依赖读取失败：{}", abs.display()))?;
-        let name = abs.file_name().unwrap().to_string_lossy().to_string();
-        deps.insert(name, content);
-    }
-
-    let compile_pb = gctx().multiprogress.add(ProgressBar::new_spinner());
-    compile_pb.enable_steady_tick(Duration::from_millis(100));
-    compile_pb.set_message(format!("编译 {} 题目的 Validator", problem_config.name));
-
-    let result = (|| -> Result<Box<dyn Validator>> {
-        let mut cpp_validator = CppValidator::new(&source_path, &IndexMap::new(), "val", deps)
-            .context("Validator 初始化失败")?;
-        cpp_validator.prepare().context("Validator 编译失败")?;
-        Ok(Box::new(cpp_validator) as Box<dyn Validator>)
-    })();
-
-    compile_pb.finish_and_clear();
-    result
+    with_spinner(
+        format!("编译 {} 题目的 Validator", problem_config.name),
+        || {
+            let mut cpp_validator = CppValidator::new(&source_path, &IndexMap::new(), "val", deps)
+                .context("Validator 初始化失败")?;
+            cpp_validator.prepare().context("Validator 编译失败")?;
+            Ok(Box::new(cpp_validator) as Box<dyn Validator>)
+        },
+    )
 }
 
 /// 校验单个题目，返回是否有输入未通过校验
@@ -85,10 +63,7 @@ fn validate_problem(
     object: &str,
     in_problem: bool,
 ) -> Result<bool> {
-    let data_items: Vec<FsTestData<'_>> = match target {
-        Target::Data => tuack_utils::data::problem_test_data(problem_config),
-        Target::Sample => tuack_utils::data::problem_sample_data(problem_config),
-    };
+    let data_items = problem_data_items(problem_config, target);
     let data_items =
         crate::utils::test_object::parse_test_object(object, &data_items, FsTestData::id)?;
 
@@ -112,7 +87,7 @@ fn validate_problem(
     );
 
     let mut failed = 0;
-    for (idx, data_item) in data_items.iter().enumerate() {
+    for (idx, data_item) in data_items.iter().enumerate().progress_with(case_pb.clone()) {
         let result = match data_item.input() {
             Ok(mut reader) => validator.validate(&mut *reader),
             Err(e) => {
@@ -123,7 +98,6 @@ fn validate_problem(
                     e
                 );
                 failed += 1;
-                case_pb.inc(1);
                 continue;
             }
         };
@@ -159,7 +133,6 @@ fn validate_problem(
         }
 
         case_pb.set_message(format!("校验测试点：{}/{}", idx + 1, data_items.len()));
-        case_pb.inc(1);
     }
 
     if in_problem {
@@ -264,13 +237,4 @@ pub fn main(args: ValidateArgs) -> Result<()> {
         user_bail!();
     }
     Ok(())
-}
-
-impl From<crate::dmk::Target> for Target {
-    fn from(value: crate::dmk::Target) -> Self {
-        match value {
-            crate::dmk::Target::Data => Target::Data,
-            crate::dmk::Target::Sample => Target::Sample,
-        }
-    }
 }

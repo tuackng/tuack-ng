@@ -108,6 +108,9 @@ fn tuack_ng(cli: Cli) -> Result<()> {
         &cli,
     )?;
     info!("booting up");
+    if let Ok(cwd) = dunce::canonicalize(Path::new(".")) {
+        debug!("当前目录：{}", cwd.display());
+    }
 
     match cli.command {
         Commands::Ren(args) => ren::main(args),

@@ -226,40 +226,7 @@ fn gen_problem(args: GenStatementArgs) -> Result<()> {
 fn gen_lfs() -> Result<()> {
     let attributes_path = find_in_scaffold("problem.gitattributes", false)?;
 
-    // 统一获取配置，避免重复调用
-    let Some(config) = gctx().config.as_ref() else {
-        user_bail!("没有有效的配置文件");
-    };
-    let config = &config.config;
-
-    // 根据当前位置获取需要处理的问题列表
-    let Some(loaded) = gctx().config.as_ref() else {
-        user_bail!("没有有效的配置文件");
-    };
-    let problems_to_process = match loaded.location {
-        CurrentLocation::Root => {
-            // 获取所有问题
-            config
-                .subconfig
-                .values()
-                .flat_map(|day| day.subconfig.values())
-                .collect()
-        }
-        CurrentLocation::Day(ref day_name) => config
-            .subconfig
-            .get(day_name)
-            .map(|day| day.subconfig.values().collect())
-            .context(format!("找不到天 '{}'", day_name))?,
-        CurrentLocation::Problem(ref day_name, ref problem_name) => config
-            .subconfig
-            .get(day_name)
-            .and_then(|day| day.subconfig.get(problem_name))
-            .map(|problem| vec![problem])
-            .context(format!("找不到问题 '{}/{}'", day_name, problem_name))?,
-        CurrentLocation::None => user_bail!("没有有效的配置文件"),
-    };
-
-    for problem in problems_to_process {
+    for problem in selected_problems()? {
         let target_path = problem.path.join(".gitattributes");
 
         if !target_path.exists() {
@@ -296,90 +263,98 @@ fn confirm_overwrite() -> bool {
     selection == 1
 }
 
+/// 按当前定位返回要处理的题目。
+fn selected_problems() -> Result<Vec<&'static ProblemConfig>> {
+    let Some(loaded) = gctx().config.as_ref() else {
+        user_bail!("没有有效的配置");
+    };
+
+    Ok(match &loaded.location {
+        CurrentLocation::Root => loaded
+            .config
+            .subconfig
+            .values()
+            .flat_map(|day| day.subconfig.values())
+            .collect(),
+        CurrentLocation::Day(day_name) => loaded
+            .config
+            .subconfig
+            .get(day_name)
+            .map(|day| day.subconfig.values().collect())
+            .context(format!("找不到天 '{}'", day_name))?,
+        CurrentLocation::Problem(day_name, problem_name) => loaded
+            .config
+            .subconfig
+            .get(day_name)
+            .and_then(|day| day.subconfig.get(problem_name))
+            .map(|problem| vec![problem])
+            .context(format!("找不到问题 '{}/{}'", day_name, problem_name))?,
+        CurrentLocation::None => user_bail!("没有有效的配置"),
+    })
+}
+
 fn gen_data(args: GenConfirmArgs) -> Result<()> {
     if !args.confirm && !confirm_overwrite() {
         return Ok(());
     }
 
-    let Some(config) = gctx().config.clone() else {
-        user_bail!("没有有效的配置");
-    };
-    for (now_day_name, day) in config.config.subconfig {
-        let day_name: Option<String> = match config.location {
-            CurrentLocation::Day(ref name) => Some(name.clone()),
-            CurrentLocation::Problem(ref day_name, _) => Some(day_name.clone()),
-            _ => None,
-        };
-        if day_name.is_some() && now_day_name != day_name.unwrap() {
+    for problem in selected_problems()? {
+        let data_dir = problem.path.join("data");
+        if !data_dir.exists() {
+            msg_warn!("题目 {} 不存在 data 目录，跳过数据生成", problem.name);
             continue;
         }
-        for (now_problem_name, problem) in day.subconfig {
-            let problem_name: Option<String> = match config.location {
-                CurrentLocation::Problem(_, ref name) => Some(name.clone()),
-                _ => None,
-            };
-            if problem_name.is_some() && now_problem_name != problem_name.unwrap() {
-                continue;
-            }
+        let mut data_entries = Vec::<String>::new();
+        for entry in fs::read_dir(&data_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file()
+                && let Some(ext) = path.extension()
+                && ext == "in"
+            {
+                let output_file = path.file_stem().unwrap().to_string_lossy() + ".ans";
+                let output_path = data_dir.join(output_file.as_ref());
 
-            let data_dir = problem.path.join("data");
-            if !data_dir.exists() {
-                msg_warn!("题目 {} 不存在 data 目录，跳过数据生成", problem.name);
-                continue;
-            }
-            let mut data_entries = Vec::<String>::new();
-            for entry in fs::read_dir(&data_dir)? {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_file()
-                    && let Some(ext) = path.extension()
-                    && ext == "in"
-                {
-                    let output_file = path.file_stem().unwrap().to_string_lossy() + ".ans";
-                    let output_path = data_dir.join(output_file.as_ref());
-
-                    if output_path.exists() {
-                        data_entries.push(path.file_stem().unwrap().to_string_lossy().to_string());
-                    }
+                if output_path.exists() {
+                    data_entries.push(path.file_stem().unwrap().to_string_lossy().to_string());
                 }
             }
-            data_entries.sort_by(|a, b| compare(a, b));
-            let count = data_entries.len() as u32;
-
-            let mut data: Vec<DataItem> = data_entries
-                .into_iter()
-                .enumerate()
-                .map(|(id, name)| {
-                    DataItem::Single(SingleDataItem {
-                        id: id as u32 + 1,
-                        input: Some(format!("{}.in", name)),
-                        output: Some(format!("{}.ans", name)),
-                        score: 100 / count,
-                        subtask: 0,
-                        orig_args: IndexMap::new(),
-                        dmk: None,
-                    })
-                })
-                .collect();
-
-            // 整除余数补给最后一个测试点，保证各测试点分数之和恰为 100
-            if let Some(last) = data.last_mut()
-                && let DataItem::Single(item) = last
-            {
-                item.score += 100 % count;
-            }
-
-            let subtasks: BTreeMap<u32, ScorePolicy> = BTreeMap::from([(0, ScorePolicy::Sum)]);
-
-            let mut _ctx = LoadContext::new();
-            let mut now_problem =
-                ProblemConfig::load(&mut _ctx, &problem.path.join(CONFIG_FILE_NAME))?;
-            now_problem.data = data;
-            now_problem.subtasks = subtasks;
-
-            let updated_content = now_problem.save()?;
-            fs::write(problem.path.join(CONFIG_FILE_NAME), updated_content)?;
         }
+        data_entries.sort_by(|a, b| compare(a, b));
+        let count = data_entries.len() as u32;
+
+        let mut data: Vec<DataItem> = data_entries
+            .into_iter()
+            .enumerate()
+            .map(|(id, name)| {
+                DataItem::Single(SingleDataItem {
+                    id: id as u32 + 1,
+                    input: Some(format!("{}.in", name)),
+                    output: Some(format!("{}.ans", name)),
+                    score: 100 / count,
+                    subtask: 0,
+                    orig_args: IndexMap::new(),
+                    dmk: None,
+                })
+            })
+            .collect();
+
+        // 整除余数补给最后一个测试点，保证各测试点分数之和恰为 100
+        if let Some(last) = data.last_mut()
+            && let DataItem::Single(item) = last
+        {
+            item.score += 100 % count;
+        }
+
+        let subtasks: BTreeMap<u32, ScorePolicy> = BTreeMap::from([(0, ScorePolicy::Sum)]);
+
+        let mut _ctx = LoadContext::new();
+        let mut now_problem = ProblemConfig::load(&mut _ctx, &problem.path.join(CONFIG_FILE_NAME))?;
+        now_problem.data = data;
+        now_problem.subtasks = subtasks;
+
+        let updated_content = now_problem.save()?;
+        fs::write(problem.path.join(CONFIG_FILE_NAME), updated_content)?;
     }
 
     Ok(())
@@ -390,71 +365,48 @@ fn gen_sample(args: GenConfirmArgs) -> Result<()> {
         return Ok(());
     }
 
-    let Some(config) = gctx().config.clone() else {
-        user_bail!("没有有效的配置");
-    };
-    for (now_day_name, day) in config.config.subconfig {
-        let day_name: Option<String> = match config.location {
-            CurrentLocation::Day(ref name) => Some(name.clone()),
-            CurrentLocation::Problem(ref day_name, _) => Some(day_name.clone()),
-            _ => None,
-        };
-        if day_name.is_some() && now_day_name != day_name.unwrap() {
+    for problem in selected_problems()? {
+        let sample_dir = problem.path.join("sample");
+        if !sample_dir.exists() {
+            msg_warn!("题目 {} 不存在 sample 目录，跳过数据生成", problem.name);
             continue;
         }
-        for (now_problem_name, problem) in day.subconfig {
-            let problem_name: Option<String> = match config.location {
-                CurrentLocation::Problem(_, ref name) => Some(name.clone()),
-                _ => None,
-            };
-            if problem_name.is_some() && now_problem_name != problem_name.unwrap() {
-                continue;
-            }
+        let mut sample_entries = Vec::<String>::new();
+        for entry in fs::read_dir(&sample_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file()
+                && let Some(ext) = path.extension()
+                && ext == "in"
+            {
+                let output_file = path.file_stem().unwrap().to_string_lossy() + ".ans";
+                let output_path = sample_dir.join(output_file.as_ref());
 
-            let sample_dir = problem.path.join("sample");
-            if !sample_dir.exists() {
-                msg_warn!("题目 {} 不存在 sample 目录，跳过数据生成", problem.name);
-                continue;
-            }
-            let mut sample_entries = Vec::<String>::new();
-            for entry in fs::read_dir(&sample_dir)? {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_file()
-                    && let Some(ext) = path.extension()
-                    && ext == "in"
-                {
-                    let output_file = path.file_stem().unwrap().to_string_lossy() + ".ans";
-                    let output_path = sample_dir.join(output_file.as_ref());
-
-                    if output_path.exists() {
-                        sample_entries
-                            .push(path.file_stem().unwrap().to_string_lossy().to_string());
-                    }
+                if output_path.exists() {
+                    sample_entries.push(path.file_stem().unwrap().to_string_lossy().to_string());
                 }
             }
-            sample_entries.sort_by(|a, b| compare(a, b));
-
-            let samples: Vec<SampleItem> = sample_entries
-                .into_iter()
-                .enumerate()
-                .map(|(id, name)| SampleItem {
-                    id: id as u32 + 1,
-                    input: Some(format!("{}.in", name)),
-                    output: Some(format!("{}.ans", name)),
-                    args: IndexMap::new(),
-                    dmk: None,
-                })
-                .collect();
-
-            let mut _ctx = LoadContext::new();
-            let mut now_problem =
-                ProblemConfig::load(&mut _ctx, &problem.path.join(CONFIG_FILE_NAME))?;
-            now_problem.samples = samples;
-
-            let updated_content = now_problem.save()?;
-            fs::write(problem.path.join(CONFIG_FILE_NAME), updated_content)?;
         }
+        sample_entries.sort_by(|a, b| compare(a, b));
+
+        let samples: Vec<SampleItem> = sample_entries
+            .into_iter()
+            .enumerate()
+            .map(|(id, name)| SampleItem {
+                id: id as u32 + 1,
+                input: Some(format!("{}.in", name)),
+                output: Some(format!("{}.ans", name)),
+                args: IndexMap::new(),
+                dmk: None,
+            })
+            .collect();
+
+        let mut _ctx = LoadContext::new();
+        let mut now_problem = ProblemConfig::load(&mut _ctx, &problem.path.join(CONFIG_FILE_NAME))?;
+        now_problem.samples = samples;
+
+        let updated_content = now_problem.save()?;
+        fs::write(problem.path.join(CONFIG_FILE_NAME), updated_content)?;
     }
 
     Ok(())
@@ -493,78 +445,56 @@ fn gen_code(args: GenConfirmArgs) -> Result<()> {
         return Ok(());
     }
 
-    let Some(config) = gctx().config.clone() else {
-        user_bail!("没有有效的配置");
-    };
-    for (now_day_name, day) in config.config.subconfig {
-        let day_name: Option<String> = match config.location {
-            CurrentLocation::Day(ref name) => Some(name.clone()),
-            CurrentLocation::Problem(ref day_name, _) => Some(day_name.clone()),
-            _ => None,
-        };
-        if day_name.is_some() && now_day_name != day_name.unwrap() {
+    for problem in selected_problems()? {
+        let mut codes = find_code(&problem.path, &user_skip)?;
+        if codes.is_empty() {
+            msg_warn!("题目 {} 不存在题解文件，跳过题解生成", problem.name);
             continue;
         }
-        for (now_problem_name, problem) in day.subconfig {
-            let problem_name: Option<String> = match config.location {
-                CurrentLocation::Problem(_, ref name) => Some(name.clone()),
-                _ => None,
+
+        codes.sort_by(|a, b| {
+            compare(
+                a.0.to_string_lossy().as_ref(),
+                b.0.to_string_lossy().as_ref(),
+            )
+        });
+
+        let mut tests = IndexMap::<String, TestCase>::new();
+
+        for (path, is_std) in codes {
+            let name = if is_std {
+                "std".to_string()
+            } else {
+                // 相对路径作为名称
+                path.strip_prefix(&problem.path)
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
             };
-            if problem_name.is_some() && now_problem_name != problem_name.unwrap() {
-                continue;
-            }
-
-            let mut codes = find_code(&problem.path, &user_skip)?;
-            if codes.is_empty() {
-                msg_warn!("题目 {} 不存在题解文件，跳过题解生成", problem.name);
-                continue;
-            }
-
-            codes.sort_by(|a, b| {
-                compare(
-                    a.0.to_string_lossy().as_ref(),
-                    b.0.to_string_lossy().as_ref(),
-                )
-            });
-
-            let mut tests = IndexMap::<String, TestCase>::new();
-
-            for (path, is_std) in codes {
-                let name = if is_std {
-                    "std".to_string()
-                } else {
-                    // 相对路径作为名称
-                    path.strip_prefix(&problem.path)
+            let expected = if is_std {
+                ExpectedScore::Single("== 100".to_string())
+            } else {
+                ExpectedScore::Multiple(vec![])
+            };
+            tests.insert(
+                name,
+                TestCase {
+                    expected,
+                    path: path
+                        .strip_prefix(&problem.path)
                         .unwrap()
                         .to_string_lossy()
-                        .to_string()
-                };
-                let expected = if is_std {
-                    ExpectedScore::Single("== 100".to_string())
-                } else {
-                    ExpectedScore::Multiple(vec![])
-                };
-                tests.insert(
-                    name,
-                    TestCase {
-                        expected,
-                        path: path
-                            .strip_prefix(&problem.path)
-                            .unwrap()
-                            .to_string_lossy()
-                            .to_string(),
-                    },
-                );
-            }
-
-            let mut _ctx = LoadContext::new();
-            let mut now_problem =
-                ProblemConfig::load(&mut _ctx, &problem.path.join(CONFIG_FILE_NAME))?;
-            now_problem.tests = tests;
-
-            let updated_content = now_problem.save()?;
-            fs::write(problem.path.join(CONFIG_FILE_NAME), updated_content)?;
+                        .to_string(),
+                },
+            );
         }
+
+        let mut _ctx = LoadContext::new();
+        let mut now_problem = ProblemConfig::load(&mut _ctx, &problem.path.join(CONFIG_FILE_NAME))?;
+        now_problem.tests = tests;
+
+        let updated_content = now_problem.save()?;
+        fs::write(problem.path.join(CONFIG_FILE_NAME), updated_content)?;
     }
 
     Ok(())

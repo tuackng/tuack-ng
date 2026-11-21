@@ -1,11 +1,11 @@
 use crate::context::gctx;
 use crate::prelude::*;
 use crate::utils::problem::meta;
+use crate::utils::progress::with_spinner;
 use clap::Args;
 use indexmap::IndexMap;
 use indicatif::ProgressBar;
 use opener::open;
-use std::time::Duration;
 use tuack_lib::ren::{
     DateInfo, Problem, RenConfig, RenParams, RenProcessor, RenderDocument, SupportLanguage,
 };
@@ -294,13 +294,9 @@ fn ren(
     problem_pb.finish_and_clear();
 
     info!("开始渲染：{}", day_config.name);
-    let compile_pb = gctx().multiprogress.add(ProgressBar::new_spinner());
-    compile_pb.enable_steady_tick(Duration::from_millis(100));
-    compile_pb.set_message(format!("渲染：{}", day_config.name));
-
-    let render_result = renderer.render(&doc, Box::new(assets));
-
-    compile_pb.finish_and_clear();
+    let render_result = with_spinner(format!("渲染：{}", day_config.name), || {
+        renderer.render(&doc, Box::new(assets))
+    });
 
     let (target, files) = match render_result {
         Ok(result) => result,
@@ -348,11 +344,6 @@ pub fn main(args: RenArgs) -> Result<()> {
         return Ok(());
     }
     let target = args.target.as_deref().expect("clap 保证存在 target");
-
-    debug!(
-        "当前目录：{}",
-        dunce::canonicalize(Path::new("."))?.to_string_lossy()
-    );
 
     let Config {
         config,

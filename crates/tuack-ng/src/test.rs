@@ -1,9 +1,8 @@
-use std::str::FromStr;
 use std::time::Duration;
 
 use bytesize::ByteSize;
 use cel_interpreter::{Context as CelContext, Program, Value};
-use clap::{Args, ValueEnum};
+use clap::Args;
 use csv::Writer;
 use indicatif::ProgressBar;
 use owo_colors::OwoColorize;
@@ -13,21 +12,17 @@ pub mod policy;
 use crate::prelude::*;
 use crate::test::policy::{DataPolicy, SamplePolicy, ScorePolicy as _};
 use crate::utils::duration::format_duration;
-use crate::utils::problem::io_mode;
+use crate::utils::problem::{
+    InteractivePurpose, build_runner, io_mode, problem_data_items, read_deps, resolve_problem_file,
+    setup_interactive,
+};
+use crate::utils::progress::with_spinner;
+use crate::utils::status::StatusLabel;
+use crate::utils::target::Target;
 use tuack_lib::test::{TaskParams, TestCaseStatus, TestSession};
 use tuack_lib::utils::testlib::Checker;
 use tuack_utils::checkers::{cpp::CppChecker, prebuilt::PrebuiltChecker};
 use tuack_utils::data::FsTestData;
-use tuack_utils::runners::cpp::CppRunner;
-use tuack_utils::runners::general::*;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum Target {
-    /// 正式测试数据
-    Data,
-    /// 样例数据
-    Sample,
-}
 
 /// 展示状态：由 [`TestCaseStatus`] 映射而来，另加编译失败（CE）
 #[derive(Debug, Clone)]
@@ -111,17 +106,19 @@ pub struct TestArgs {
     pub target: Target,
 }
 
-fn status_color(status: &DisplayStatus) -> String {
-    match status {
-        DisplayStatus::AC => "AC".green().to_string(),
-        DisplayStatus::WA => "WA".red().to_string(),
-        DisplayStatus::TLE => "TLE".blue().to_string(),
-        DisplayStatus::MLE => "MLE".blue().to_string(),
-        DisplayStatus::RE => "RE".bright_blue().to_string(),
-        DisplayStatus::UKE => "UKE".bright_black().to_string(),
-        DisplayStatus::FE => "FE".yellow().to_string(),
-        DisplayStatus::CE => "CE".yellow().to_string(),
-        DisplayStatus::PC(score) => format!("PC {:.2} / 100", score).yellow().to_string(),
+impl StatusLabel for DisplayStatus {
+    fn label(&self) -> String {
+        match self {
+            DisplayStatus::AC => "AC".green().to_string(),
+            DisplayStatus::WA => "WA".red().to_string(),
+            DisplayStatus::TLE => "TLE".blue().to_string(),
+            DisplayStatus::MLE => "MLE".blue().to_string(),
+            DisplayStatus::RE => "RE".bright_blue().to_string(),
+            DisplayStatus::UKE => "UKE".bright_black().to_string(),
+            DisplayStatus::FE => "FE".yellow().to_string(),
+            DisplayStatus::CE => "CE".yellow().to_string(),
+            DisplayStatus::PC(score) => format!("PC {score:.2} / 100").yellow().to_string(),
+        }
     }
 }
 
@@ -171,76 +168,23 @@ fn check_test_case(test_case: &TestCase, actual_score: u32) -> bool {
 ///
 /// 代码路径无法解析或不是文件、后缀名缺失或不受支持、运行器构造失败、交互配置
 /// 缺失或不可读，以及运行器不支持交互时返回 `Err`。
-fn build_runner(
+fn build_tester_runner(
     day_config: &ContestDayConfig,
     problem_config: &ProblemConfig,
     test: &TestCase,
     is_sample: bool,
 ) -> Result<Box<dyn Runner>> {
-    let path = PathBuf::from_str(&test.path)?;
-    let path = if path.is_absolute() {
-        path
-    } else {
-        problem_config.path.join(path)
-    };
-    let path = dunce::canonicalize(&path)
-        .with_context(|| format!("测试代码路径无法解析：{}", path.display()))?;
-    if !path.is_file() {
-        bail!("测试代码不是文件：{}", path.display());
-    }
+    let path = resolve_problem_file(problem_config, &test.path)
+        .with_context(|| format!("无法解析测试代码：{}", test.path))?;
     info!("文件路径：{}", path.display());
 
-    let extension = path
-        .extension()
-        .context("测试代码没有后缀名")?
-        .to_string_lossy()
-        .to_string();
-
-    let mut runner: Box<dyn Runner> = match extension.as_str() {
-        "cpp" => Box::new(CppRunner::new(
-            &path,
-            &day_config.compile,
-            problem_config.name.clone(),
-        )?),
-        _ => Box::new(GeneralRunner::new(
-            &path,
-            &day_config.compile,
-            problem_config.name.clone(),
-            &gctx().languages,
-        )?),
+    let mut runner = build_runner(&path, day_config, problem_config)?;
+    let purpose = if is_sample {
+        InteractivePurpose::Sample
+    } else {
+        InteractivePurpose::Data
     };
-
-    if problem_config.problem_type == ProblemType::Interactive {
-        if !runner.manifest().interactive {
-            bail!("该语言不支持交互");
-        }
-        let interactive = problem_config
-            .interactive
-            .as_ref()
-            .context("交互题目缺少交互配置")?;
-        let resolve_path = |path: &String| -> Result<PathBuf> {
-            let path = PathBuf::from_str(path)?;
-            let joined = if path.is_absolute() {
-                path
-            } else {
-                problem_config.path.join(path)
-            };
-            dunce::canonicalize(&joined)
-                .with_context(|| format!("交互文件路径无法解析：{}", joined.display()))
-        };
-        let grader_path = if is_sample {
-            match &interactive.sample_grader {
-                Some(sg) => resolve_path(sg)?,
-                None => resolve_path(&interactive.grader)?,
-            }
-        } else {
-            resolve_path(&interactive.grader)?
-        };
-        let header_path = resolve_path(&interactive.header)?;
-
-        runner.set_interactive(&grader_path, &header_path)?;
-    }
-
+    setup_interactive(problem_config, purpose, runner.as_mut())?;
     Ok(runner)
 }
 
@@ -340,16 +284,224 @@ fn write_results_to_csv(results: Vec<ProblemTestResult>, csv_path: &Path) -> Res
     Ok(())
 }
 
+/// 单个测试者一次评测所需的上下文
+struct TesterContext<'a, 'p> {
+    day_config: &'a ContestDayConfig,
+    problem_config: &'a ProblemConfig,
+    test_name: &'a str,
+    test: &'a TestCase,
+    target: Target,
+    full_score: u32,
+    checker: &'a dyn Checker,
+    params: &'a TaskParams,
+    data_items: &'a [FsTestData<'p>],
+}
+
+/// 评测单个测试者，返回汇总结果以及本题是否未通过。
+fn run_tester(context: TesterContext<'_, '_>) -> Result<(ProblemTestResult, bool)> {
+    let TesterContext {
+        day_config,
+        problem_config,
+        test_name,
+        test,
+        target,
+        full_score,
+        checker,
+        params,
+        data_items,
+    } = context;
+    let is_sample = matches!(target, Target::Sample);
+
+    info!("测试 {} 的程序", test_name);
+    msg_progress!(
+        "测试题目 {} 的测试 {} 的程序",
+        problem_config.name.magenta(),
+        test_name.cyan()
+    );
+
+    // 初始化失败（路径、语言、交互配置）-> 该测试者记一行 UKE
+    let mut runner = match build_tester_runner(day_config, problem_config, test, is_sample) {
+        Ok(runner) => runner,
+        Err(error) => {
+            let message = format!("{error:#}");
+            msg_item!("UKE".bright_black().bold(), "无法完成评测");
+            msg_error!("{}", message);
+            return Ok(record_tester_failure(
+                test_name,
+                DisplayStatus::UKE,
+                Some(message),
+                full_score,
+                target,
+            ));
+        }
+    };
+
+    // 编译失败 -> 记录 CE，不进入评测
+    if let Err(e) = runner.prepare() {
+        msg_item!("CE".yellow().bold(), "编译错误");
+        msg_error!("{}", e);
+        return Ok(record_tester_failure(
+            test_name,
+            DisplayStatus::CE,
+            None,
+            full_score,
+            target,
+        ));
+    }
+
+    // 运行所有测试点
+    let mut session = TestSession::new(runner.as_mut(), checker, params.clone());
+    let mut individual_results = Vec::new();
+    let mut results = Vec::new();
+
+    let case_test_pb = gctx()
+        .multiprogress
+        .add(ProgressBar::new(data_items.len() as u64));
+    case_test_pb.set_style(
+        indicatif::ProgressStyle::default_bar()
+            .template("  [{bar:40.magenta/blue}] {msg}")
+            .unwrap()
+            .progress_chars("=> "),
+    );
+    case_test_pb.set_message(format!("运行测试点：{}/{}", 1, data_items.len()));
+
+    let mut case_count = 0;
+    for data_item in data_items {
+        case_count += 1;
+        info!("运行测试点：{}", data_item.id());
+
+        let result = session.judge(data_item)?;
+        info!("测试点结果：{:?}", result.status);
+
+        let display_status: DisplayStatus = (&result.status).into();
+        let full_score = data_item.full_score();
+        let earned_score = (result.score * full_score as f64).round() as u32;
+
+        let status_str = display_status.label();
+
+        // 非 UKE 时取判题消息首行附在结果行后；无信息则为 None
+        let info_line: Option<String> = if matches!(display_status, DisplayStatus::UKE) {
+            None
+        } else {
+            result.message.as_deref().and_then(|m| {
+                let t = m.trim();
+                if t.is_empty() {
+                    None
+                } else {
+                    t.lines().next().map(|s| s.to_string())
+                }
+            })
+        };
+
+        individual_results.push(IndividualTestCaseResult {
+            test_case_id: data_item.id(),
+            status: display_status.clone(),
+            score: earned_score,
+            full_score,
+            time: format_time(&display_status, result.time),
+            memory: format_memory(&display_status, result.memory),
+            message: result.message.clone(),
+        });
+
+        match info_line {
+            Some(info) => msg_item!(
+                status_str.clone().bold(),
+                "测试点 {}  | {} | {} | {}",
+                data_item.id().to_string().bold(),
+                format_time(&display_status, result.time).bold(),
+                format_memory(&display_status, result.memory).bold(),
+                info.bright_black()
+            ),
+            None => msg_item!(
+                status_str.clone().bold(),
+                "测试点 {}  | {} | {}",
+                data_item.id().to_string().bold(),
+                format_time(&display_status, result.time).bold(),
+                format_memory(&display_status, result.memory).bold()
+            ),
+        }
+
+        // UKE 错误信息在结果行后打印
+        if matches!(display_status, DisplayStatus::UKE)
+            && let Some(m) = result.message.as_deref()
+        {
+            let t = m.trim();
+            if !t.is_empty() {
+                msg_error!("{}", t);
+            }
+        }
+
+        case_test_pb.set_message(format!(
+            "运行测试点：{}/{} | #{} {}",
+            case_count + 1,
+            data_items.len(),
+            data_item.id(),
+            status_str
+        ));
+        case_test_pb.inc(1);
+
+        results.push(result);
+    }
+
+    case_test_pb.finish_and_clear();
+
+    // 判分：按 target 选择评分策略
+    let report = match target {
+        Target::Data => DataPolicy.score(problem_config, data_items, &results),
+        Target::Sample => SamplePolicy.score(problem_config, data_items, &results),
+    };
+
+    msg_info!("测试结果：");
+    if report.groups.len() > 1 {
+        for (id, group) in &report.groups {
+            info!("Subtask #{} 得分 {}/{}", id, group.earned, group.full);
+            msg_info!(
+                "Subtask {}{} 得分 {}/{}",
+                "#".bold(),
+                id.to_string().bold(),
+                group.earned.to_string().cyan(),
+                group.full.to_string().green()
+            );
+        }
+    }
+    msg_info!(
+        "{}",
+        format!(
+            "总得分 {}/{}",
+            report.total.to_string().cyan().bold(),
+            report.full_score.to_string().green().bold()
+        )
+        .bold()
+    );
+
+    let problem_result = ProblemTestResult {
+        tester_name: test_name.to_string(),
+        test_case_results: individual_results,
+        total_score: report.total,
+        full_score: report.full_score,
+    };
+
+    let unmet = target == Target::Data && !check_test_case(test, report.total);
+    if target == Target::Data {
+        if unmet {
+            info!("测试 {} 不满足所有条件", test_name);
+            msg_warn!("{}", "不满足所有条件".bold());
+        } else {
+            info!("测试 {} 通过", test_name);
+        }
+    }
+
+    runner.cleanup()?;
+    Ok((problem_result, unmet))
+}
+
 pub fn test_problem(
     day_config: &ContestDayConfig,
     problem_config: &ProblemConfig,
     target: Target,
     in_problem: bool,
 ) -> Result<bool> {
-    let data_items: Vec<FsTestData<'_>> = match target {
-        Target::Data => tuack_utils::data::problem_test_data(problem_config),
-        Target::Sample => tuack_utils::data::problem_sample_data(problem_config),
-    };
+    let data_items = problem_data_items(problem_config, target);
     let is_sample = matches!(target, Target::Sample);
 
     // 该题目的满分：正式数据按 Subtask 满分之和，样例按数据点个数
@@ -385,56 +537,44 @@ pub fn test_problem(
                 &pair.data
             };
 
-            let resolve = |path: &str| problem_config.path.join(path);
-            let source_path = resolve(&chk_config.source);
+            let source_path =
+                resolve_problem_file(problem_config, &chk_config.source).map_err(|error| {
+                    user_error!(
+                        "无法解析题目 {} 的 Checker 源文件：{error:#}",
+                        problem_config.name.magenta()
+                    )
+                })?;
+            let deps = read_deps(problem_config, &chk_config.deps).map_err(|error| {
+                user_error!(
+                    "无法读取题目 {} 的 Checker 依赖：{error:#}",
+                    problem_config.name.magenta()
+                )
+            })?;
 
-            if !source_path.exists() {
-                user_bail!("题目 {} 的 Checker 不存在", problem_config.name.magenta());
-            }
-
-            let mut deps: IndexMap<String, Vec<u8>> = IndexMap::new();
-            for dep_path in &chk_config.deps {
-                let abs = resolve(dep_path);
-                let content = match fs::read(&abs) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        user_bail!(
-                            "题目 {} 的 Checker 依赖读取失败：{}",
+            let cpp_checker = with_spinner(
+                format!("编译 {} 题目的 Checker", problem_config.name),
+                || {
+                    let mut cpp_checker =
+                        CppChecker::new(&source_path, &IndexMap::new(), "chk", deps).map_err(
+                            |e| {
+                                user_error!(
+                                    "题目 {} 的 Checker 初始化失败：{}",
+                                    problem_config.name.magenta(),
+                                    e
+                                )
+                            },
+                        )?;
+                    cpp_checker.prepare().map_err(|e| {
+                        user_error!(
+                            "题目 {} 的 Checker 编译失败：{}",
                             problem_config.name.magenta(),
                             e
-                        );
-                    }
-                };
-                let name = abs.file_name().unwrap().to_string_lossy().to_string();
-                deps.insert(name, content);
-            }
+                        )
+                    })?;
+                    Ok(cpp_checker)
+                },
+            )?;
 
-            let compile_pb = gctx().multiprogress.add(ProgressBar::new_spinner());
-            compile_pb.enable_steady_tick(Duration::from_millis(100));
-            compile_pb.set_message(format!("编译 {} 题目的 Checker", problem_config.name));
-
-            let mut cpp_checker = match CppChecker::new(&source_path, &IndexMap::new(), "chk", deps)
-            {
-                Ok(c) => c,
-                Err(e) => {
-                    user_bail!(
-                        "题目 {} 的 Checker 初始化失败：{}",
-                        problem_config.name.magenta(),
-                        e
-                    );
-                }
-            };
-
-            if let Err(e) = cpp_checker.prepare() {
-                compile_pb.finish_and_clear();
-                user_bail!(
-                    "题目 {} 的 Checker 编译失败：{}",
-                    problem_config.name.magenta(),
-                    e
-                );
-            }
-
-            compile_pb.finish_and_clear();
             Box::new(cpp_checker) as Box<dyn Checker>
         }
         None => {
@@ -475,192 +615,21 @@ pub fn test_problem(
             test_name
         ));
 
-        info!("测试 {} 的程序", test_name);
-        msg_progress!(
-            "测试题目 {} 的测试 {} 的程序",
-            problem_config.name.magenta(),
-            test_name.cyan()
-        );
+        let (problem_result, failed) = run_tester(TesterContext {
+            day_config,
+            problem_config,
+            test_name: test_name.as_str(),
+            test,
+            target,
+            full_score,
+            checker: checker.as_ref(),
+            params: &params,
+            data_items: &data_items,
+        })?;
 
-        // 初始化失败（路径、语言、交互配置）-> 该测试者记一行 UKE，继续下一个
-        let mut runner = match build_runner(day_config, problem_config, test, is_sample) {
-            Ok(runner) => runner,
-            Err(error) => {
-                let message = format!("{error:#}");
-                msg_item!("UKE".bright_black().bold(), "无法完成评测");
-                msg_error!("{}", message);
-                let (problem_result, failed) = record_tester_failure(
-                    test_name,
-                    DisplayStatus::UKE,
-                    Some(message),
-                    full_score,
-                    target,
-                );
-                unmet |= failed;
-                all_test_results.push(problem_result);
-                tester_pb.inc(1);
-                continue;
-            }
-        };
-
-        // 编译失败 -> 记录 CE，不进入评测
-        if let Err(e) = runner.prepare() {
-            msg_item!("CE".yellow().bold(), "编译错误");
-            msg_error!("{}", e);
-
-            let (problem_result, failed) =
-                record_tester_failure(test_name, DisplayStatus::CE, None, full_score, target);
-            unmet |= failed;
-            all_test_results.push(problem_result);
-            tester_pb.inc(1);
-            continue;
-        }
-
-        // 运行所有测试点
-        let mut session = TestSession::new(runner.as_mut(), checker.as_ref(), params.clone());
-        let mut individual_results = Vec::new();
-        let mut results = Vec::new();
-
-        let case_test_pb = gctx()
-            .multiprogress
-            .add(ProgressBar::new(data_items.len() as u64));
-        case_test_pb.set_style(
-            indicatif::ProgressStyle::default_bar()
-                .template("  [{bar:40.magenta/blue}] {msg}")
-                .unwrap()
-                .progress_chars("=> "),
-        );
-        case_test_pb.set_message(format!("运行测试点：{}/{}", 1, data_items.len()));
-
-        let mut case_count = 0;
-        for data_item in &data_items {
-            case_count += 1;
-            info!("运行测试点：{}", data_item.id());
-
-            let result = session.judge(data_item)?;
-            info!("测试点结果：{:?}", result.status);
-
-            let display_status: DisplayStatus = (&result.status).into();
-            let full_score = data_item.full_score();
-            let earned_score = (result.score * full_score as f64).round() as u32;
-
-            let status_str = status_color(&display_status);
-
-            // 非 UKE 时取判题消息首行附在结果行后；无信息则为 None
-            let info_line: Option<String> = if matches!(display_status, DisplayStatus::UKE) {
-                None
-            } else {
-                result.message.as_deref().and_then(|m| {
-                    let t = m.trim();
-                    if t.is_empty() {
-                        None
-                    } else {
-                        t.lines().next().map(|s| s.to_string())
-                    }
-                })
-            };
-
-            individual_results.push(IndividualTestCaseResult {
-                test_case_id: data_item.id(),
-                status: display_status.clone(),
-                score: earned_score,
-                full_score,
-                time: format_time(&display_status, result.time),
-                memory: format_memory(&display_status, result.memory),
-                message: result.message.clone(),
-            });
-
-            match info_line {
-                Some(info) => msg_item!(
-                    status_str.clone().bold(),
-                    "测试点 {}  | {} | {} | {}",
-                    data_item.id().to_string().bold(),
-                    format_time(&display_status, result.time).bold(),
-                    format_memory(&display_status, result.memory).bold(),
-                    info.bright_black()
-                ),
-                None => msg_item!(
-                    status_str.clone().bold(),
-                    "测试点 {}  | {} | {}",
-                    data_item.id().to_string().bold(),
-                    format_time(&display_status, result.time).bold(),
-                    format_memory(&display_status, result.memory).bold()
-                ),
-            }
-
-            // UKE 错误信息在结果行后打印
-            if matches!(display_status, DisplayStatus::UKE)
-                && let Some(m) = result.message.as_deref()
-            {
-                let t = m.trim();
-                if !t.is_empty() {
-                    msg_error!("{}", t);
-                }
-            }
-
-            case_test_pb.set_message(format!(
-                "运行测试点：{}/{} | #{} {}",
-                case_count + 1,
-                data_items.len(),
-                data_item.id(),
-                status_str
-            ));
-            case_test_pb.inc(1);
-
-            results.push(result);
-        }
-
-        case_test_pb.finish_and_clear();
-
-        // 判分：按 target 选择评分策略
-        let report = match target {
-            Target::Data => DataPolicy.score(problem_config, &data_items, &results),
-            Target::Sample => SamplePolicy.score(problem_config, &data_items, &results),
-        };
-
-        msg_info!("测试结果：");
-        if report.groups.len() > 1 {
-            for (id, group) in &report.groups {
-                info!("Subtask #{} 得分 {}/{}", id, group.earned, group.full);
-                msg_info!(
-                    "Subtask {}{} 得分 {}/{}",
-                    "#".bold(),
-                    id.to_string().bold(),
-                    group.earned.to_string().cyan(),
-                    group.full.to_string().green()
-                );
-            }
-        }
-        msg_info!(
-            "{}",
-            format!(
-                "总得分 {}/{}",
-                report.total.to_string().cyan().bold(),
-                report.full_score.to_string().green().bold()
-            )
-            .bold()
-        );
-
-        let problem_result = ProblemTestResult {
-            tester_name: test_name.to_string(),
-            test_case_results: individual_results,
-            total_score: report.total,
-            full_score: report.full_score,
-        };
+        unmet |= failed;
         all_test_results.push(problem_result);
-
-        if target == Target::Data {
-            if check_test_case(test, report.total) {
-                info!("测试 {} 通过", test_name);
-            } else {
-                info!("测试 {} 不满足所有条件", test_name);
-                msg_warn!("{}", "不满足所有条件".bold());
-                unmet = true;
-            }
-        }
-
         tester_pb.inc(1);
-        runner.cleanup()?;
     }
 
     if in_problem {

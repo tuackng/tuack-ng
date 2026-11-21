@@ -45,4 +45,14 @@ impl AlignedFields {
         }
         out.trim_end_matches('\n').to_string()
     }
+
+    /// 按层级缩进渲染：每级 4 个空格。
+    pub fn render_indented(&self, level: usize) -> String {
+        let indent = "    ".repeat(level);
+        self.render()
+            .lines()
+            .map(|line| format!("{indent}{line}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
 }

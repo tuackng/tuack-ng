@@ -1,7 +1,3 @@
-use std::fmt;
-use std::str::FromStr;
-use std::time::Duration;
-
 use clap::Args;
 use clap::ValueEnum;
 use indicatif::ProgressBar;
@@ -10,33 +6,19 @@ use rand::RngExt;
 
 use crate::context::gctx;
 use crate::prelude::*;
-use crate::utils::problem::io_mode;
+use crate::utils::problem::{
+    InteractivePurpose, build_runner, io_mode, problem_data_items, read_deps, resolve_problem_file,
+    setup_interactive,
+};
+use crate::utils::progress::with_spinner;
 use crate::utils::random::gen_rnd;
+use crate::utils::target::Target;
 use crate::utils::test_object::parse_test_object;
 use crate::validate::compile_validator;
 use tuack_lib::dmk::DmkSession;
 use tuack_lib::utils::testlib::{Generator, Validator};
 use tuack_utils::data::FsTestData;
 use tuack_utils::generators::cpp::CppGenerator;
-use tuack_utils::runners::cpp::CppRunner;
-use tuack_utils::runners::general::GeneralRunner;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum Target {
-    /// 正式测试数据
-    Data,
-    /// 样例数据
-    Sample,
-}
-
-impl fmt::Display for Target {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Target::Data => write!(f, "data"),
-            Target::Sample => write!(f, "sample"),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum DmkCommand {
@@ -216,69 +198,25 @@ fn find_std(problem: &ProblemConfig) -> Result<PathBuf> {
     for (name, case) in &problem.tests {
         if let ExpectedScore::Single(str) = &case.expected
             && str.replace(' ', "") == "==100"
-            && problem.path.join(PathBuf::from(&case.path)).exists()
+            && let Ok(path) = resolve_problem_file(problem, &case.path)
         {
-            info!("找到标称 {name}, 位置 {}", case.path);
-            return Ok(problem.path.join(PathBuf::from(&case.path)));
+            info!("找到标程 {name}, 位置 {}", path.display());
+            return Ok(path);
         }
     }
 
     user_bail!("未找到标程文件")
 }
 
-/// 构造标程运行器 [`Runner`]
+/// 构造标程运行器并设置交互配置
 fn build_std_runner(
     std_path: &Path,
     day_config: &ContestDayConfig,
     problem_config: &ProblemConfig,
 ) -> Result<Box<dyn Runner>> {
-    let mut runner: Box<dyn Runner> = match std_path
-        .extension()
-        .context("文件无后缀名")?
-        .to_string_lossy()
-        .to_string()
-        .as_str()
-    {
-        "cpp" => Box::new(CppRunner::new(
-            std_path,
-            &day_config.compile,
-            problem_config.name.clone(),
-        )?),
-        _ => Box::new(GeneralRunner::new(
-            std_path,
-            &day_config.compile,
-            problem_config.name.clone(),
-            &gctx().languages,
-        )?),
-    };
-
-    if problem_config.problem_type == ProblemType::Interactive && runner.manifest().interactive {
-        let interactive = problem_config.interactive.as_ref().unwrap();
-
-        let resolve_path = |path: &String| -> Result<PathBuf> {
-            let p = PathBuf::from_str(path)?;
-            Ok(if p.is_absolute() {
-                p
-            } else {
-                dunce::canonicalize(problem_config.path.join(p))?
-            })
-        };
-        let grader_path = match &interactive.dmk_grader {
-            Some(dmk_grader) => resolve_path(dmk_grader)?,
-            None => resolve_path(&interactive.grader)?,
-        };
-        let header_path = resolve_path(&interactive.header)?;
-
-        if !grader_path.exists() {
-            user_bail!("grader 不存在")
-        }
-        if !header_path.exists() {
-            user_bail!("header 不存在")
-        }
-
-        runner.set_interactive(&grader_path, &header_path)?;
-    }
-
+    let mut runner = build_runner(std_path, day_config, problem_config)?;
+    setup_interactive(problem_config, InteractivePurpose::Dmk, runner.as_mut())
+        .map_err(|error| user_error!("无法为题目 {} 设置交互：{error:#}", problem_config.name))?;
     Ok(runner)
 }
 
@@ -305,10 +243,7 @@ pub fn main(args: DmkArgs) -> Result<()> {
             user_bail!("本命令只能在题目目录下执行");
         };
 
-    let selected: Vec<FsTestData> = match &args.target {
-        Target::Data => tuack_utils::data::problem_test_data(current_problem),
-        Target::Sample => tuack_utils::data::problem_sample_data(current_problem),
-    };
+    let selected: Vec<FsTestData> = problem_data_items(current_problem, args.target);
     let selected = parse_test_object(&args.object, &selected, FsTestData::id)?;
 
     if selected.is_empty() {
@@ -331,36 +266,21 @@ pub fn main(args: DmkArgs) -> Result<()> {
         }
     };
 
-    let resolve = |path: &str| current_problem.path.join(path);
+    let gen_path = resolve_problem_file(current_problem, &generator_config.source)
+        .with_context(|| format!("无法解析数据生成器源文件：{}", generator_config.source))?;
+    let deps =
+        read_deps(current_problem, &generator_config.deps).context("无法读取数据生成器依赖")?;
 
-    let gen_path = resolve(&generator_config.source);
-
-    let mut deps: IndexMap<String, Vec<u8>> = IndexMap::new();
-    for dep_path in &generator_config.deps {
-        let abs = resolve(dep_path);
-        let content =
-            std::fs::read(&abs).with_context(|| format!("读取依赖文件失败：{}", abs.display()))?;
-        let name = abs
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .to_string();
-        deps.insert(name, content);
-    }
-
-    // 编译数据生成器
-    let gen_compile_pb = gctx().multiprogress.add(ProgressBar::new_spinner());
-    gen_compile_pb.enable_steady_tick(Duration::from_millis(100));
-    gen_compile_pb.set_message("编译数据生成器");
-    let mut generator = CppGenerator::new(&gen_path, &current_day.compile, deps)?;
-    let gen_result = generator.prepare();
-    gen_compile_pb.finish_and_clear();
-    gen_result.context("数据生成器编译失败")?;
+    let mut generator = with_spinner("编译数据生成器", || {
+        let mut generator = CppGenerator::new(&gen_path, &current_day.compile, deps)?;
+        generator.prepare().context("数据生成器编译失败")?;
+        Ok(generator)
+    })?;
 
     let effective_validate = args.validate.unwrap_or(generator_config.validate);
     let validator: Option<Box<dyn Validator>> = if effective_validate {
         Some(
-            compile_validator(current_problem, args.target.into()).map_err(|e| {
+            compile_validator(current_problem, args.target).map_err(|e| {
                 user_error!("题目 {} 的 Validator 不可用：{:#}", current_problem.name, e)
             })?,
         )
@@ -390,12 +310,7 @@ pub fn main(args: DmkArgs) -> Result<()> {
     info!("找到标程：{}", std_path.display());
     let mut runner = build_std_runner(&std_path, current_day, current_problem)?;
 
-    let std_compile_pb = gctx().multiprogress.add(ProgressBar::new_spinner());
-    std_compile_pb.enable_steady_tick(Duration::from_millis(100));
-    std_compile_pb.set_message("编译标程");
-    let std_result = runner.prepare();
-    std_compile_pb.finish_and_clear();
-    std_result?;
+    with_spinner("编译标程", || runner.prepare())?;
 
     let mut session = DmkSession::new(
         &mut *runner,

@@ -1,12 +1,13 @@
 use crate::prelude::*;
 use crate::utils::problem::meta;
 use clap::Args;
-use std::collections::HashSet;
+use path_slash::PathExt;
 use tuack_lib::dump::{
     DumpCase, DumpChecker, DumpConfig, DumpDocument, DumpFile, DumpProblem, DumpSample,
     DumpSubtask, ScorePolicy,
 };
 use tuack_utils::assets::FsAssetProvider;
+use walkdir::WalkDir;
 
 #[derive(Args, Debug)]
 #[command(version)]
@@ -20,32 +21,20 @@ pub struct DumpArgs {
     pub target: Option<String>,
 }
 
-/// 递归枚举 down/ 目录的非样例附加文件
-/// `rel` 为相对 down 根的路径，样例排除用"相对各自资源根的路径"比较。
-fn collect_extra_down(
-    dir: &Path,
-    rel: &str,
-    sample_files: &HashSet<String>,
-    out: &mut Vec<DumpFile>,
-) -> Result<()> {
-    for entry in fs::read_dir(dir)? {
+/// 递归枚举 down/ 目录的附加文件
+fn collect_extra_down(dir: &Path) -> Result<Vec<DumpFile>> {
+    let mut files = Vec::new();
+    for entry in WalkDir::new(dir).min_depth(1).sort_by_file_name() {
         let entry = entry?;
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let child_rel = if rel.is_empty() {
-            name.clone()
-        } else {
-            format!("{}/{}", rel, name)
-        };
-        let ftype = entry.file_type()?;
-        if ftype.is_dir() {
-            collect_extra_down(&entry.path(), &child_rel, sample_files, out)?;
-        } else if ftype.is_file() && !sample_files.contains(&child_rel) {
-            out.push(DumpFile {
-                path: PathBuf::from(format!("down/{}", child_rel)),
-            });
+        if !entry.file_type().is_file() {
+            continue;
         }
+        let rel = entry.path().strip_prefix(dir)?.to_slash_lossy();
+        files.push(DumpFile {
+            path: PathBuf::from(format!("down/{rel}")),
+        });
     }
-    Ok(())
+    Ok(files)
 }
 
 /// 从 config 提取 day 级导出文档 [`DumpDocument`] 及其 [`FsAssetProvider`] 素材提供者。
@@ -112,16 +101,12 @@ fn build_dump_document(
             deps: c.data.deps.iter().map(PathBuf::from).collect(),
         });
 
-        let mut extra_down = Vec::new();
         let extra_dir = prob.path.join("down");
-        if extra_dir.exists() {
-            let sample_files: HashSet<String> = prob
-                .samples
-                .iter()
-                .flat_map(|s| [s.input_path(), s.output_path()])
-                .collect();
-            collect_extra_down(&extra_dir, "", &sample_files, &mut extra_down)?;
-        }
+        let extra_down = if extra_dir.exists() {
+            collect_extra_down(&extra_dir)?
+        } else {
+            Vec::new()
+        };
 
         problems.push(DumpProblem {
             idx: idx as u64,

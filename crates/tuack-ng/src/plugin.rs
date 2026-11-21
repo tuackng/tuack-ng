@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::utils::aligned::AlignedFields;
+use crate::utils::status::StatusLabel;
 use clap::{Args, Subcommand};
 use owo_colors::OwoColorize;
 use tuack_utils::plugin::manager::{DISABLED_MARKER, PluginState, PluginStatus, TRUSTED_MARKER};
@@ -16,6 +17,13 @@ pub struct PluginArgs {
     pub command: PluginCommands,
 }
 
+/// 插件名参数
+#[derive(Args, Debug)]
+pub struct PluginNameArgs {
+    /// 插件名（包名或目录名）
+    pub name: String,
+}
+
 #[derive(Subcommand, Debug)]
 #[command(version)]
 pub enum PluginCommands {
@@ -24,31 +32,30 @@ pub enum PluginCommands {
     List,
     /// 输出单个插件的详细信息
     #[command(version)]
-    Status {
-        /// 插件名（包名或目录名）
-        name: String,
-    },
+    Status(PluginNameArgs),
     /// 启用插件
     #[command(version)]
-    Enable { name: String },
+    Enable(PluginNameArgs),
     /// 禁用插件
     #[command(version)]
-    Disable { name: String },
+    Disable(PluginNameArgs),
     /// 信任插件
     #[command(version)]
     Trust {
-        name: String,
+        #[command(flatten)]
+        name: PluginNameArgs,
         /// 跳过确认（不推荐）
         #[arg(short = 'y', long)]
         yes: bool,
     },
     /// 取消信任
     #[command(version)]
-    Untrust { name: String },
+    Untrust(PluginNameArgs),
     /// 卸载插件
     #[command(version)]
     Uninstall {
-        name: String,
+        #[command(flatten)]
+        name: PluginNameArgs,
         #[arg(short = 'y', long)]
         yes: bool,
     },
@@ -60,23 +67,24 @@ pub enum PluginCommands {
 pub fn main(args: PluginArgs) -> Result<()> {
     match args.command {
         PluginCommands::List => list(),
-        PluginCommands::Status { name } => status(&name),
-        PluginCommands::Enable { name } => set_disabled(&name, false),
-        PluginCommands::Disable { name } => set_disabled(&name, true),
-        PluginCommands::Trust { name, yes } => set_trusted(&name, true, yes),
-        PluginCommands::Untrust { name } => set_trusted(&name, false, true),
-        PluginCommands::Uninstall { name, yes } => uninstall(&name, yes),
+        PluginCommands::Status(name) => status(&name.name),
+        PluginCommands::Enable(name) => set_disabled(&name.name, false),
+        PluginCommands::Disable(name) => set_disabled(&name.name, true),
+        PluginCommands::Trust { name, yes } => set_trusted(&name.name, true, yes),
+        PluginCommands::Untrust(name) => set_trusted(&name.name, false, true),
+        PluginCommands::Uninstall { name, yes } => uninstall(&name.name, yes),
         PluginCommands::Market(args) => market::main(args),
     }
 }
 
-/// 返回 [`PluginState`] 对应的彩色状态标签
-fn state_label(state: &PluginState) -> String {
-    match state {
-        PluginState::Loaded => "已加载".green().to_string(),
-        PluginState::Untrusted => "未信任".yellow().to_string(),
-        PluginState::Disabled => "已禁用".dimmed().to_string(),
-        PluginState::Error(_) => "错误".red().to_string(),
+impl StatusLabel for PluginState {
+    fn label(&self) -> String {
+        match self {
+            PluginState::Loaded => "已加载".green().to_string(),
+            PluginState::Untrusted => "未信任".yellow().to_string(),
+            PluginState::Disabled => "已禁用".dimmed().to_string(),
+            PluginState::Error(_) => "错误".red().to_string(),
+        }
     }
 }
 
@@ -95,7 +103,7 @@ fn list() -> Result<()> {
         return Ok(());
     }
     for s in statuses {
-        msg!("{} {}", versioned(s).blue(), state_label(&s.state));
+        msg!("{} {}", versioned(s).blue(), s.state.label());
         msg!("    {}", describe(s.manifest.as_ref()));
         match &s.state {
             PluginState::Error(_) => {
@@ -143,7 +151,7 @@ fn print_status(s: &PluginStatus) -> Result<()> {
     let mut fields = AlignedFields::new();
     fields.push("名称", &s.name);
     fields.push("目录", s.dir.display());
-    fields.push("状态", state_label(&s.state));
+    fields.push("状态", s.state.label());
     if let PluginState::Error(reason) = &s.state {
         fields.push("错误", reason);
     }
@@ -179,23 +187,23 @@ fn print_status(s: &PluginStatus) -> Result<()> {
         let mut sub = AlignedFields::new();
         match &c.body {
             ComponentBody::RenTemplate(t) => {
-                sub.push("    renderer", &t.renderer);
+                sub.push("renderer", &t.renderer);
                 let processors = if t.processors.is_empty() {
                     "(无)".to_string()
                 } else {
                     t.processors.join(", ")
                 };
-                sub.push("    processors", processors);
+                sub.push("processors", processors);
             }
             ComponentBody::Renderer(e) | ComponentBody::Dumper(e) | ComponentBody::Processor(e) => {
                 match permissions(e) {
-                    Some(p) => sub.push("    权限", p.bright_yellow()),
-                    None => sub.push("    权限", "无".dimmed()),
+                    Some(p) => sub.push("权限", p.bright_yellow()),
+                    None => sub.push("权限", "无".dimmed()),
                 }
-                sub.push("    func", &e.func);
+                sub.push("func", &e.func);
             }
         }
-        msg!("{}", sub.render());
+        msg!("{}", sub.render_indented(1));
     }
     Ok(())
 }

@@ -44,6 +44,7 @@ tempfile.workspace = true
 termcolor = "1.4.1"
 unicode-width = "0.2.2"
 ureq = "3.5.0"
+walkdir = "2.5.0"
 zip.workspace = true
 
 [dependencies.tuack-ng-parser]

@@ -4,5 +4,8 @@ pub mod filesystem;
 pub mod hash;
 pub mod message;
 pub mod problem;
+pub mod progress;
 pub mod random;
+pub mod status;
+pub mod target;
 pub mod test_object;

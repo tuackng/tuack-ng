@@ -3901,6 +3901,7 @@ dependencies = [
  "unicode-width",
  "ureq",
  "vergen",
+ "walkdir",
  "zip",
 ]
 
