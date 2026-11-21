@@ -31,7 +31,7 @@ impl Visitor for HtmlVisitor {
                 self.messages.push(CheckInfo::new(
                     block.span,
                     format!(
-                        "检测到 HTML 块，第一行为：{}",
+                        "检测到 HTML 块，第一行是 {}",
                         content.lines().nth(0).unwrap_or("")
                     ),
                     CheckImportance::Warn,

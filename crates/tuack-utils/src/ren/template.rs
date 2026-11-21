@@ -32,7 +32,7 @@ fn handle_sample(
     base_path: &Path,
     warnings: &Arc<Mutex<Vec<String>>>,
 ) -> Result<String, minijinja::Error> {
-    debug!("处理 sample 函数：{}", sample_id);
+    debug!("处理 sample 函数 {}", sample_id);
 
     // 查找样例
     let sample_item = match problem.samples.iter().find(|s| s.id == sample_id) {
@@ -79,7 +79,7 @@ fn handle_sample(
                 warnings
                     .lock()
                     .unwrap()
-                    .push(format!("读取输入文件失败：{:?} -> {}", input_path, e));
+                    .push(format!("读取输入文件 {:?} 失败：{}", input_path, e));
                 return Err(minijinja::Error::new(
                     minijinja::ErrorKind::InvalidOperation,
                     format!("读取输入文件失败 {}", e),
@@ -143,7 +143,7 @@ fn handle_sample_file(
     problem: &ProblemConfig,
     warnings: &Arc<Mutex<Vec<String>>>,
 ) -> Result<String, minijinja::Error> {
-    debug!("处理 sample_file 函数：{}", sample_id);
+    debug!("处理 sample_file 函数 {}", sample_id);
 
     // 检查样例是否存在
     if !problem.samples.iter().any(|s| s.id == sample_id) {

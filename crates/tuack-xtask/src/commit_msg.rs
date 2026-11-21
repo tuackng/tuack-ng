@@ -138,7 +138,7 @@ fn check(subject: &str, message: &str) -> Result<(), String> {
         return Err("缺少类型".to_owned());
     }
     if !TYPES.contains(&kind) {
-        return Err(format!("未知类型：{kind}"));
+        return Err(format!("类型 {kind} 未知"));
     }
     if let Some(scope) = scope {
         check_scope(scope)?;
@@ -177,15 +177,15 @@ fn check_scope(scope: &str) -> Result<(), String> {
         |c: char| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '_' | '-' | '/');
     if !scope.chars().all(allowed) {
         return Err(format!(
-            "范围只能用小写字母、数字、下划线、减号与斜杠：{scope}"
+            "范围只能用小写字母、数字、下划线、减号与斜杠，实际为 {scope}"
         ));
     }
     if scope.starts_with('/') || scope.ends_with('/') || scope.contains("//") {
-        return Err(format!("范围路径不合法：{scope}"));
+        return Err(format!("范围路径 {scope} 不合法"));
     }
     let top = scope.split('/').next().unwrap_or(scope);
     if !SCOPES.contains(&top) {
-        return Err(format!("未知的顶层范围：{top}"));
+        return Err(format!("顶层范围 {top} 未知"));
     }
     Ok(())
 }
@@ -240,13 +240,13 @@ mod tests {
         let cases = [
             ("feat 缺少分隔符", "缺少「: 」分隔符"),
             (": 空类型", "缺少类型"),
-            ("frobnicate: 未知类型", "未知类型：frobnicate"),
+            ("frobnicate: 未知类型", "类型 frobnicate 未知"),
             ("fix(): 空范围", "范围为空"),
             ("fix(cli: 括号未闭合", "范围的括号没有闭合"),
             ("fix(CLI): 大写范围", "范围只能用小写字母"),
-            ("fix(gone): 未知顶层", "未知的顶层范围：gone"),
-            ("fix(cli/): 尾斜杠", "范围路径不合法"),
-            ("fix(cli//doc): 双斜杠", "范围路径不合法"),
+            ("fix(gone): 未知顶层", "顶层范围 gone 未知"),
+            ("fix(cli/): 尾斜杠", "范围路径"),
+            ("fix(cli//doc): 双斜杠", "范围路径"),
             ("fix: 句号。", "描述句末不要加句号"),
             ("fix: 句号.", "描述句末不要加句号"),
             ("fix(cli)!: 破坏性变更", "破坏性变更需要在正文写"),

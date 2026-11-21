@@ -43,7 +43,7 @@ impl TypstRenderer {
             Ok(output) => {
                 if output.status.success() {
                     let version = String::from_utf8_lossy(&output.stdout);
-                    debug!("Typst 版本：{}", version.trim());
+                    debug!("Typst 版本 {}", version.trim());
                 } else {
                     bail!("Typst 命令执行失败，请检查是否已安装");
                 }
@@ -56,9 +56,9 @@ impl TypstRenderer {
         let template_required_files = ["main.typ", "utils.typ"];
         for file in template_required_files {
             if !template_dir.join(file).exists() {
-                bail!("模板缺少必要文件：{}", file);
+                bail!("模板缺少必要文件 {}", file);
             }
-            info!("文件存在：{}", file);
+            info!("模板文件 {} 存在", file);
         }
         Ok(())
     }
@@ -129,7 +129,7 @@ impl TypstRenderer {
             }
             let rel = target
                 .strip_prefix("img/")
-                .context(format!("图片路径不合法：{}", target.display()))?;
+                .context(format!("图片路径不合法 {}", target.display()))?;
             let dest = img_dir.join(rel);
             if let Some(parent) = dest.parent() {
                 fs::create_dir_all(parent)?;

@@ -105,7 +105,7 @@ impl ArbiterDumper {
 
         match default_src {
             Some(src) => {
-                info!("编译默认比较器：{}", src.display());
+                info!("编译默认比较器 {}", src.display());
                 let status = Command::new("g++")
                     .arg(&src)
                     .arg("-o")
@@ -178,7 +178,7 @@ impl Dumper for ArbiterDumper {
 
         for (probnum, prob) in doc.problems.iter().enumerate() {
             let probnum = probnum + 1;
-            info!("处理题目：{}", prob.meta.name);
+            info!("处理题目 {}", prob.meta.name);
 
             let score_per_case = if prob.data.is_empty() {
                 0u32
@@ -348,7 +348,7 @@ impl Dumper for ArbiterDumper {
 
         // 复制样例到 down/{day}/{name}/，含附加文件
         for prob in &doc.problems {
-            info!("处理题目样例：{}", prob.meta.name);
+            info!("处理题目样例 {}", prob.meta.name);
             let prob_down_dir = format!("down/{}/{}", doc.config.day_name, prob.meta.name);
 
             for (idx, sample) in prob.samples.iter().enumerate() {
@@ -366,7 +366,7 @@ impl Dumper for ArbiterDumper {
             // 拷贝 down/ 目录下不属于 sample 的附加文件（保留文件树）
             for file in &prob.extra_down {
                 let rel = file.path.strip_prefix("down/").unwrap_or(&file.path);
-                info!("发现附加文件：{}", rel.display());
+                info!("发现附加文件 {}", rel.display());
                 files.push(OutputFile::File {
                     path: PathBuf::from(format!("{}/{}", prob_down_dir, rel.display())),
                     bytes: assets.load(prob.idx, &file.path)?,

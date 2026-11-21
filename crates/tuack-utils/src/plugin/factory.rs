@@ -60,7 +60,7 @@ pub(crate) fn build_processor(
 ) -> Result<Box<dyn RenProcessor>> {
     match pref {
         ProcessorRef::Builtin(name) => {
-            builtin_processor(name).with_context(|| format!("无此处理器：{}", name))
+            builtin_processor(name).with_context(|| format!("处理器 {} 不存在", name))
         }
         ProcessorRef::Plugin(pref) => {
             let package = package(registry, pref)?;
@@ -146,7 +146,7 @@ fn package<'a>(
 ) -> Result<&'a crate::plugin::manager::PluginPackage> {
     registry
         .package(&pref.package)
-        .context(format!("未找到插件包：{}", pref.package))
+        .context(format!("未找到插件包 {}", pref.package))
 }
 
 fn component<'a>(
@@ -156,7 +156,7 @@ fn component<'a>(
 ) -> Result<&'a crate::plugin::manifest::Component> {
     components
         .get(&(kind, name.to_string()))
-        .context(format!("未找到插件组件：{}", name))
+        .context(format!("未找到插件组件 {}", name))
 }
 
 /// 取插件的 wasm 入口宿主路径（约束在包目录内，且不经符号链接逃逸）。
@@ -201,7 +201,7 @@ fn copy_dir_contents(src: &Path, dst: &Path) -> Result<()> {
             fs::copy(&from, &to)
                 .with_context(|| format!("复制模板文件失败：{}", from.display()))?;
         } else {
-            debug!("跳过模板目录中的非普通文件：{}", from.display());
+            debug!("跳过模板目录中的非普通文件 {}", from.display());
         }
     }
     Ok(())

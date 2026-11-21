@@ -105,7 +105,7 @@ impl CheckRule for Invisible {
                 if INVISIBLE_CHARS.contains(&c) {
                     messages.push(CheckInfo::new(
                         crate::doc::span::line_to_byte_span(markdown_text, line_number),
-                        format!("发现不可见字符：{} (U+{:04X})", get_char_name(c), c as u32),
+                        format!("发现不可见字符 {}（U+{:04X}）", get_char_name(c), c as u32),
                         CheckImportance::Error,
                     ));
                 }

@@ -131,12 +131,12 @@ fn check_test_case(test_case: &TestCase, actual_score: u32) -> bool {
     for condition in &conditions {
         let expr = format!("{} {}", actual_score, condition);
 
-        debug!("条件：{}", expr);
+        debug!("条件 {}", expr);
 
         let program = match Program::compile(&expr) {
             Ok(program) => program,
             Err(error) => {
-                msg_error!("期望条件不合法：{}（{}）", condition, error);
+                msg_error!("期望条件 {} 不合法：{}", condition, error);
                 return false;
             }
         };
@@ -144,7 +144,7 @@ fn check_test_case(test_case: &TestCase, actual_score: u32) -> bool {
         let value = match program.execute(&CelContext::default()) {
             Ok(value) => value,
             Err(error) => {
-                msg_error!("期望条件不合法：{}（{}）", condition, error);
+                msg_error!("期望条件 {} 不合法：{}", condition, error);
                 return false;
             }
         };
@@ -153,7 +153,7 @@ fn check_test_case(test_case: &TestCase, actual_score: u32) -> bool {
             Value::Bool(true) => {}
             Value::Bool(false) => return false,
             _ => {
-                msg_error!("期望条件不是布尔值：{}", condition);
+                msg_error!("期望条件 {} 不是布尔值", condition);
                 return false;
             }
         }
@@ -175,8 +175,8 @@ fn build_tester_runner(
     is_sample: bool,
 ) -> Result<Box<dyn Runner>> {
     let path = resolve_problem_file(problem_config, &test.path)
-        .with_context(|| format!("无法解析测试代码：{}", test.path))?;
-    info!("文件路径：{}", path.display());
+        .with_context(|| format!("无法解析测试代码 {}", test.path))?;
+    info!("文件路径 {}", path.display());
 
     let mut runner = build_runner(&path, day_config, problem_config)?;
     let purpose = if is_sample {
@@ -363,15 +363,15 @@ fn run_tester(context: TesterContext<'_, '_>) -> Result<(ProblemTestResult, bool
             .unwrap()
             .progress_chars("=> "),
     );
-    case_test_pb.set_message(format!("运行测试点：{}/{}", 1, data_items.len()));
+    case_test_pb.set_message(format!("运行测试点 {}/{}", 1, data_items.len()));
 
     let mut case_count = 0;
     for data_item in data_items {
         case_count += 1;
-        info!("运行测试点：{}", data_item.id());
+        info!("运行测试点 {}", data_item.id());
 
         let result = session.judge(data_item)?;
-        info!("测试点结果：{:?}", result.status);
+        info!("测试点结果 {:?}", result.status);
 
         let display_status: DisplayStatus = (&result.status).into();
         let full_score = data_item.full_score();
@@ -432,7 +432,7 @@ fn run_tester(context: TesterContext<'_, '_>) -> Result<(ProblemTestResult, bool
         }
 
         case_test_pb.set_message(format!(
-            "运行测试点：{}/{} | #{} {}",
+            "运行测试点 {}/{} | #{} {}",
             case_count + 1,
             data_items.len(),
             data_item.id(),
@@ -520,7 +520,7 @@ pub fn test_problem(
         io_mode: io_mode(problem_config),
         time_limit: Duration::try_from_secs_f64(problem_config.time_limit).map_err(|_| {
             user_error!(
-                "题目 {} 的时间限制不合法：{} 秒",
+                "题目 {} 的时间限制不合法（{} 秒）",
                 problem_config.name.magenta(),
                 problem_config.time_limit
             )
@@ -540,7 +540,7 @@ pub fn test_problem(
             let source_path =
                 resolve_problem_file(problem_config, &chk_config.source).map_err(|error| {
                     user_error!(
-                        "无法解析题目 {} 的 Checker 源文件（{}）：{error:#}",
+                        "无法解析题目 {} 的 Checker 源文件 {}：{error:#}",
                         problem_config.name.magenta(),
                         chk_config.source
                     )
@@ -610,7 +610,7 @@ pub fn test_problem(
     for (test_name, test) in &problem_config.tests {
         tester_count += 1;
         tester_pb.set_message(format!(
-            "处理第 {}/{} 个测试者：{}",
+            "处理第 {}/{} 个测试者 {}",
             tester_count,
             problem_config.tests.len(),
             test_name
@@ -700,18 +700,18 @@ pub fn main(args: TestArgs) -> Result<()> {
             let day_config = config
                 .subconfig
                 .get(day_key)
-                .with_context(|| format!("未找到天配置：{}", day_key))?;
+                .with_context(|| format!("未找到比赛日配置 {}", day_key))?;
             let problem_config = day_config
                 .subconfig
                 .get(prob_key)
-                .with_context(|| format!("未找到题目配置：{}", prob_key))?;
+                .with_context(|| format!("未找到题目配置 {}", prob_key))?;
             failed |= test_problem(day_config, problem_config, args.target, true)?;
         }
         CurrentLocation::Day(day_key) => {
             let day_config = config
                 .subconfig
                 .get(day_key)
-                .with_context(|| format!("未找到天配置：{}", day_key))?;
+                .with_context(|| format!("未找到比赛日配置 {}", day_key))?;
             failed |= test_day(day_config, args.target, true)?;
         }
         CurrentLocation::Root => {
@@ -726,7 +726,7 @@ pub fn main(args: TestArgs) -> Result<()> {
                     .progress_chars("=> "),
             );
             for (day_idx, (_, day_config)) in config.subconfig.iter().enumerate() {
-                day_pb.set_message(format!("处理第 {}/{} 天", day_idx + 1, total_days));
+                day_pb.set_message(format!("处理第 {}/{} 个比赛日", day_idx + 1, total_days));
                 failed |= test_day(day_config, args.target, false)?;
                 day_pb.inc(1);
             }

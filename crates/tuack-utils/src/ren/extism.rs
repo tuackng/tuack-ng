@@ -63,7 +63,7 @@ impl ExtismRenderer {
             .map_err(|e| anyhow!(e).context("加载 extism 渲染器失败"))?;
 
         if !plugin.function_exists(&function) {
-            bail!("插件未导出函数：{}", function);
+            bail!("插件未导出函数 {}", function);
         }
 
         Ok(Self {

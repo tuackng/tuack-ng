@@ -249,7 +249,7 @@ mod tests {
                 .message
                 .as_deref()
                 .is_some_and(|message| message.contains("注入输入失败")),
-            "UKE 消息应携带故障原因：{:?}",
+            "UKE 消息应携带故障原因（{:?}）",
             result.message
         );
     }

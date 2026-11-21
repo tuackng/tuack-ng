@@ -38,7 +38,7 @@ pub enum Compiler {
 pub fn build_with(checkers_dir: &Path, testlib: &Path, compiler: Compiler) -> Result<()> {
     let testlib = std::path::absolute(testlib).context("无法解析 testlib.h 路径")?;
     if !testlib.is_file() {
-        bail!("找不到 testlib.h：{}", testlib.display());
+        bail!("找不到 testlib.h {}", testlib.display());
     }
     let include_dir = testlib.parent().context("testlib.h 没有父目录")?;
 
@@ -57,7 +57,7 @@ pub fn build_with(checkers_dir: &Path, testlib: &Path, compiler: Compiler) -> Re
 /// 把 `source` 处的 testlib.h 复制到 `dest`，内容一致时跳过。
 pub fn copy_testlib(source: &Path, dest: &Path) -> Result<()> {
     if !source.is_file() {
-        bail!("找不到 testlib.h：{}", source.display());
+        bail!("找不到 testlib.h {}", source.display());
     }
 
     if let Some(parent) = dest.parent() {

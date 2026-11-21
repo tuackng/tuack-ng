@@ -99,7 +99,7 @@ fn conf_title(args: &ConfValuesArgs) -> Result<()> {
                 .config
                 .subconfig
                 .get_mut(&day)
-                .with_context(|| format!("找不到天配置：{}", day))?;
+                .with_context(|| format!("找不到比赛日配置 {}", day))?;
             if args.value.len() != day_config.subconfig.len() {
                 user_bail!("提供的标题数量与题目数量不匹配");
             }
@@ -135,7 +135,7 @@ fn conf_time(args: &ConfValuesArgs) -> Result<()> {
                 .config
                 .subconfig
                 .get_mut(&day)
-                .with_context(|| format!("找不到天配置：{}", day))?;
+                .with_context(|| format!("找不到比赛日配置 {}", day))?;
             if args.value.len() != day_config.subconfig.len() {
                 user_bail!("提供的时间限制数量与题目数量不匹配");
             }
@@ -192,7 +192,7 @@ fn conf_custom(args: &ConfCustomArgs) -> Result<()> {
                 .config
                 .subconfig
                 .get_mut(&day)
-                .with_context(|| format!("找不到天配置：{}", day))?;
+                .with_context(|| format!("找不到比赛日配置 {}", day))?;
             if args.value.len() != day_config.subconfig.len() {
                 user_bail!("提供的键值数量与题目数量不匹配");
             }

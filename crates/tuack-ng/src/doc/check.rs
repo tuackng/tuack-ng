@@ -160,7 +160,7 @@ pub fn check(problem_config: &ProblemConfig) -> Result<bool> {
     Ok(reported)
 }
 
-/// 检查一天，返回是否发现问题
+/// 检查一个比赛日，返回是否发现问题
 pub fn check_day(day_config: &ContestDayConfig) -> Result<bool> {
     let mut reported = false;
     for (_, problem_config) in &day_config.subconfig {

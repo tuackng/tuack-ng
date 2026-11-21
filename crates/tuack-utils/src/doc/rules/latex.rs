@@ -239,7 +239,7 @@ impl Visitor for LatexVisitor {
                 self.messages.push(CheckInfo {
                     span: problem.span.or(inline.span),
                     secondary_span: None,
-                    info: format!("在公式 {} 中：{}", content, problem.info),
+                    info: format!("在公式 {} 中（{}）", content, problem.info),
                     note: None,
                     importance: problem.importance,
                 });

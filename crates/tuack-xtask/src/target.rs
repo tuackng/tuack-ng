@@ -30,12 +30,12 @@ impl Target {
         let platform = match env::consts::OS {
             "linux" => Platform::Linux,
             "windows" => Platform::Windows,
-            other => bail!("不支持的操作系统：{other}"),
+            other => bail!("操作系统 {other} 不受支持"),
         };
         let arch = match env::consts::ARCH {
             "x86_64" => Arch::X86_64,
             "aarch64" => Arch::Aarch64,
-            other => bail!("不支持的架构：{other}"),
+            other => bail!("架构 {other} 不受支持"),
         };
         let libc = match (platform, libc) {
             (Platform::Linux, None | Some(LibcChoice::Gnu)) => Libc::Gnu,

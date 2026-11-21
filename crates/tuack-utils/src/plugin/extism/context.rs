@@ -93,7 +93,7 @@ impl PluginContext {
     fn copy_asset(&self, asset_id: u64, dest: &str) -> Result<(), AssetError> {
         if under_readonly_mount(dest) {
             return Err(AssetError::InvalidPath(format!(
-                "只读资源目录不可写入：{dest}"
+                "只读资源目录不可写入 {dest}"
             )));
         }
         let host_dest = resolve_within(&self.tmp_dir, dest)
@@ -149,11 +149,11 @@ impl PluginContext {
     fn resolve_cwd(&self, cwd: &str) -> Result<PathBuf> {
         let path = Path::new(cwd);
         if !path.is_absolute() {
-            bail!("工作目录必须是宿主绝对路径：{cwd}");
+            bail!("工作目录必须是宿主绝对路径 {cwd}");
         }
         let cleaned = path.clean();
         let Ok(rel) = cleaned.strip_prefix(&self.tmp_dir) else {
-            bail!("工作目录越出工作区：{cwd}");
+            bail!("工作目录越出工作区 {cwd}");
         };
         crate::utils::resolve_within(&self.tmp_dir, rel)
     }
@@ -243,7 +243,7 @@ fn get_path(
     let path: String = plugin.memory_get_val(&inputs[0])?;
     let outcome = if under_readonly_mount(&path) {
         Err(PathError::Invalid(format!(
-            "只读资源目录不可解析为宿主路径：{path}"
+            "只读资源目录不可解析为宿主路径 {path}"
         )))
     } else {
         with_context(plugin, |ctx| resolve_workspace_path(&ctx.tmp_dir, &path))?
@@ -327,7 +327,10 @@ fn under_readonly_mount(path: &str) -> bool {
 fn resolve_workspace_path(base: &Path, rel: &str) -> Result<String, PathError> {
     let resolved = resolve_within(base, rel).map_err(|e| PathError::Invalid(format!("{e:#}")))?;
     resolved.into_os_string().into_string().map_err(|raw| {
-        PathError::Invalid(format!("工作区路径非 UTF-8：{}", Path::new(&raw).display()))
+        PathError::Invalid(format!(
+            "工作区路径 {} 不是 UTF-8",
+            Path::new(&raw).display()
+        ))
     })
 }
 

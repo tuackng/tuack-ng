@@ -13,21 +13,21 @@ pub fn write_outputs(base: &Path, files: Vec<OutputFile>) -> Result<()> {
             OutputFile::Dir(path) => {
                 let target = base.join(&path);
                 fs::create_dir_all(&target)
-                    .with_context(|| format!("创建目录失败：{}", target.display()))?;
-                info!("创建目录：{}", target.display());
+                    .with_context(|| format!("创建目录 {} 失败", target.display()))?;
+                info!("创建目录 {}", target.display());
             }
             OutputFile::File { path, bytes } => {
                 let target = base.join(&path);
                 if let Some(parent) = target.parent() {
                     fs::create_dir_all(parent)
-                        .with_context(|| format!("创建目录失败：{}", parent.display()))?;
+                        .with_context(|| format!("创建目录 {} 失败", parent.display()))?;
                 }
                 let mut bytes = bytes;
                 let mut out = fs::File::create(&target)
-                    .with_context(|| format!("创建文件失败：{}", target.display()))?;
+                    .with_context(|| format!("创建文件 {} 失败", target.display()))?;
                 std::io::copy(&mut bytes, &mut out)
-                    .with_context(|| format!("写入文件失败：{}", target.display()))?;
-                info!("生成：{}", target.display());
+                    .with_context(|| format!("写入文件 {} 失败", target.display()))?;
+                info!("生成 {}", target.display());
             }
         }
     }

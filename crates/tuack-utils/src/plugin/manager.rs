@@ -274,7 +274,7 @@ impl PluginManager {
                 // 拒绝重名：同名包/目录已登记则跳过该包（保证 `plugin` 按名查找唯一）
                 if let Some(prev) = statuses.iter().find(|s| s.name == name) {
                     warn!(
-                        "跳过插件 {}（{}）：名称与 {} 重复",
+                        "跳过插件 {}（{}），名称与 {} 重复",
                         name,
                         pkg_dir.display(),
                         prev.dir.display()
@@ -331,7 +331,7 @@ impl PluginManager {
                         // `status_name` 可能是目录名兜底（非法包名），与上方查过的 `name` 不同
                         if let Some(prev) = statuses.iter().find(|s| s.name == status_name) {
                             warn!(
-                                "跳过插件 {}（{}）：名称与 {} 重复",
+                                "跳过插件 {}（{}），名称与 {} 重复",
                                 status_name,
                                 pkg_dir.display(),
                                 prev.dir.display()
@@ -374,7 +374,7 @@ impl PluginManager {
         self.statuses
             .iter()
             .find(|s| s.name == name)
-            .context(format!("未找到插件：{}", name))
+            .context(format!("未找到插件 {}", name))
     }
 
     /// 迭代所有加载失败（[`PluginState::Error`]）的插件状态
@@ -529,7 +529,7 @@ impl PluginManager {
     fn template_from_plugin(&self, comp_name: &str) -> Result<ResolvedTemplate> {
         let (package, comp) = self
             .find_component(ComponentKind::RenTemplate, comp_name)
-            .context(format!("未找到插件组件：{}", comp_name))?;
+            .context(format!("未找到插件组件 {}", comp_name))?;
         let ComponentBody::RenTemplate(t) = &comp.body else {
             bail!("组件 {} 不是 ren_template", comp_name);
         };
@@ -588,7 +588,7 @@ impl PluginManager {
     fn dumper_from_plugin(&self, comp_name: &str) -> Result<DumperRef> {
         let (package, comp) = self
             .find_component(ComponentKind::Dumper, comp_name)
-            .context(format!("未找到插件组件：{}", comp_name))?;
+            .context(format!("未找到插件组件 {}", comp_name))?;
         if !matches!(comp.body, ComponentBody::Dumper(_)) {
             bail!("组件 {} 不是 dumper", comp_name);
         }
@@ -611,9 +611,9 @@ impl PluginManager {
         }
         let (package, _) = self
             .find_component(ComponentKind::Renderer, s)
-            .with_context(|| format!("未知渲染器：{}", s))?;
+            .with_context(|| format!("未知渲染器 {}", s))?;
         if package.name != pkg {
-            bail!("不允许跨包引用：{} 引用了包 {} 的组件", pkg, package.name);
+            bail!("不允许跨包引用，{} 引用了包 {} 的组件", pkg, package.name);
         }
         Ok(RendererRef::Plugin(PluginRef {
             package: package.name.clone(),
@@ -632,9 +632,9 @@ impl PluginManager {
         }
         let (package, _) = self
             .find_component(ComponentKind::Processor, s)
-            .with_context(|| format!("未知处理器：{}", s))?;
+            .with_context(|| format!("未知处理器 {}", s))?;
         if package.name != pkg {
-            bail!("不允许跨包引用：{} 引用了包 {} 的组件", pkg, package.name);
+            bail!("不允许跨包引用，{} 引用了包 {} 的组件", pkg, package.name);
         }
         Ok(ProcessorRef::Plugin(PluginRef {
             package: package.name.clone(),
@@ -682,9 +682,9 @@ fn component_io_error(manifest: &PluginManifest, pkg_dir: &Path) -> Option<Strin
         {
             match crate::utils::resolve_within(pkg_dir, dir) {
                 Ok(path) if path.is_dir() => {}
-                Ok(_) => return Some(format!("模板目录不存在：{}", dir.display())),
+                Ok(_) => return Some(format!("模板目录不存在 {}", dir.display())),
                 Err(e) => {
-                    return Some(format!("模板目录非法（{}）：{e}", dir.display()));
+                    return Some(format!("模板目录 {} 非法：{e}", dir.display()));
                 }
             }
         }
@@ -713,7 +713,7 @@ fn load_package(
     let name = manifest.name.clone();
 
     if !valid_name(&name) {
-        return Err((dir_name.to_string(), format!("非法包名：{}", name)));
+        return Err((dir_name.to_string(), format!("非法包名 {}", name)));
     }
     if existing_packages.contains_key(&name) {
         return Err((name, "包名重复".to_string()));
@@ -729,19 +729,21 @@ fn load_package(
     if let Some(entry) = manifest.entry.as_ref() {
         match crate::utils::resolve_within(pkg_dir, entry) {
             Ok(path) if path.is_file() => {}
-            Ok(_) => return Err((name, format!("entry 不存在：{}", entry.display()))),
-            Err(e) => return Err((name, format!("entry 非法（{}）：{e}", entry.display()))),
+            Ok(_) => return Err((name, format!("entry 不存在 {}", entry.display()))),
+            Err(e) => return Err((name, format!("entry {} 非法：{e}", entry.display()))),
         }
     }
     if let Some(asset_dir) = manifest.asset_dir.as_ref() {
         match crate::utils::resolve_within(pkg_dir, asset_dir) {
             Ok(path) if path.is_dir() => {}
-            Ok(_) => return Err((name, format!("asset_dir 不可访问：{}", asset_dir.display()))),
-            Err(e) => {
+            Ok(_) => {
                 return Err((
                     name,
-                    format!("asset_dir 非法（{}）：{e}", asset_dir.display()),
+                    format!("asset_dir（{}）不可访问", asset_dir.display()),
                 ));
+            }
+            Err(e) => {
+                return Err((name, format!("asset_dir {} 非法：{e}", asset_dir.display())));
             }
         }
     }
@@ -774,17 +776,17 @@ fn collect_components(
     let mut components: IndexMap<(ComponentKind, String), Component> = IndexMap::new();
     for comp in &manifest.components {
         if !valid_name(&comp.name) {
-            return Err(format!("非法组件名：{}", comp.name));
+            return Err(format!("组件名 {} 非法", comp.name));
         }
         let key = (comp.body.kind(), comp.name.clone());
         if components.contains_key(&key) {
-            return Err(format!("同域组件重名：{}", comp.name));
+            return Err(format!("组件名 {} 在同域内重名", comp.name));
         }
         if is_builtin_reserved(key.0, &comp.name, builtin_template_names) {
-            return Err(format!("组件名与内置冲突：{}", comp.name));
+            return Err(format!("组件名 {} 与内置组件冲突", comp.name));
         }
         if existing.contains_key(&key) {
-            return Err(format!("组件名与其他插件冲突：{}", comp.name));
+            return Err(format!("组件名 {} 与其他插件冲突", comp.name));
         }
         components.insert(key, comp.clone());
     }
@@ -809,7 +811,7 @@ fn is_builtin_reserved(kind: ComponentKind, name: &str, builtin_template_names: 
 /// 或 minor 高于宿主时返回 `Err`；调用方按"跳过该插件并警告"处理。
 pub fn check_plugin_api(required: &str) -> Result<()> {
     let required =
-        semver::Version::parse(required).with_context(|| format!("pluginapi 非法：{required}"))?;
+        semver::Version::parse(required).with_context(|| format!("pluginapi {required} 非法"))?;
     let host = semver::Version::parse(PLUGIN_API_VERSION)
         .expect("PLUGIN_API_VERSION 必须是合法的语义化版本");
     if required.major != host.major {

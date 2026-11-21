@@ -60,7 +60,7 @@ impl ExtismProcessor {
             extism::Plugin::new(WasmInput::Manifest(manifest), common_imports(), with_wasi)
                 .map_err(|e| anyhow!(e).context("加载 extism 插件失败"))?;
         if !plugin.function_exists(&function) {
-            bail!("插件未导出函数：{}", function);
+            bail!("插件未导出函数 {}", function);
         }
         Ok(Self {
             plugin: Mutex::new(plugin),

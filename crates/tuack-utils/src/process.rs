@@ -173,11 +173,11 @@ impl ProcessSupervisor {
                 kill_and_reap(child, pid).await?;
                 match violation {
                     Violation::Timeout => {
-                        info!("进程超时：{}", elapsed.as_secs_f64());
+                        info!("进程超时，已运行 {} 秒", elapsed.as_secs_f64());
                         SuperviseOutcome::timeout(elapsed, memory)
                     }
                     Violation::Memory => {
-                        info!("进程内存超限：{}", elapsed.as_secs_f64());
+                        info!("进程内存超限，已运行 {} 秒", elapsed.as_secs_f64());
                         SuperviseOutcome::out_of_memory(elapsed, memory)
                     }
                 }
@@ -185,7 +185,7 @@ impl ProcessSupervisor {
             Finished::Exit(exit) => {
                 let outcome = classify_exit(exit, elapsed, memory, &self.limits)?;
                 info!(
-                    "进程结束，耗时：{:?}, 峰值内存：{:?}, 状态：{:?}",
+                    "进程结束，耗时 {:?}，峰值内存 {:?}，状态 {:?}",
                     elapsed, outcome.memory, outcome.status
                 );
                 outcome
@@ -481,7 +481,7 @@ mod tests {
                 .expect("启动子进程失败");
             assert!(
                 matches!(&outcome.status, RunStatus::Success),
-                "短命进程被误判：{:?}",
+                "短命进程被误判（{:?}）",
                 outcome.status
             );
             assert!(outcome.time.is_some(), "正常退出应记录用时");
@@ -535,7 +535,7 @@ mod tests {
             "sleep" => std::thread::sleep(Duration::from_secs(10)),
             // 上限 320 MiB、每块 8 MiB，远低于常见的机器内存
             "alloc" => hold_memory(320 << 20, 8 << 20),
-            other => panic!("未知的负载类型：{other}"),
+            other => panic!("负载类型 {other} 未知"),
         }
     }
 
@@ -571,12 +571,12 @@ mod tests {
         let killed_at = outcome.time.expect("超时应记录终止时刻");
         assert!(
             killed_at > Duration::from_millis(200),
-            "终止时刻应在限时之后：{killed_at:?}"
+            "终止时刻 {killed_at:?} 应在限时之后"
         );
         assert!(outcome.memory.is_some(), "TLE 前应已采到峰值内存");
         assert!(
             waited < Duration::from_secs(5),
-            "没有及时终止超时进程：{waited:?}"
+            "没有及时终止超时进程（{waited:?}）"
         );
     }
 
@@ -599,7 +599,7 @@ mod tests {
         assert!(outcome.time.is_some(), "MLE 应记录终止时刻");
         assert!(
             waited < Duration::from_secs(5),
-            "没有及时终止超限进程：{waited:?}"
+            "没有及时终止超限进程（{waited:?}）"
         );
     }
 }

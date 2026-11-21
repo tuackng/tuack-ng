@@ -37,7 +37,7 @@ fn custom_panic_handler(panic_info: &PanicHookInfo, verbose: bool) {
 
     if let Some(location) = panic_info.location() {
         panic_log!(
-            "Panic 发生在：{}:{}:{}",
+            "Panic 发生在 {}:{}:{}",
             location.file(),
             location.line(),
             location.column()
@@ -53,7 +53,7 @@ fn custom_panic_handler(panic_info: &PanicHookInfo, verbose: bool) {
     } else {
         panic_log!("无法获取 Panic 信息");
     }
-    panic_log!("详见：https://docs.tuack-ng.ink/app/faq/panic.html");
+    panic_log!("详见 https://docs.tuack-ng.ink/app/faq/panic.html");
 }
 
 /// 初始化日志系统，返回与日志联动的进度条容器
@@ -170,13 +170,18 @@ fn init_context(
     let config = match load_config(&mut ctx, Path::new(".")) {
         Ok(res) => {
             if res.as_ref().is_some() {
-                info!("当前路径：{:#?}", res.as_ref().unwrap().location);
+                info!("当前路径 {:#?}", res.as_ref().unwrap().location);
                 for (&from, message) in &ctx.migrated_notices {
                     let to = from + 1;
                     if message.is_empty() {
-                        msg_warn!("来自从 {} 版本迁移到 {} 版本的信息", from, to);
+                        msg_warn!("从 {} 版本迁移到 {} 版本", from, to);
                     } else {
-                        msg_warn!("来自从 {} 版本迁移到 {} 版本的信息：{}", from, to, message);
+                        msg_warn!(
+                            "从 {} 版本迁移到 {} 版本时产生了信息：{}",
+                            from,
+                            to,
+                            message
+                        );
                     }
                 }
                 if ctx.root.count() != 0 && !validating {
@@ -212,10 +217,10 @@ fn init_context(
         .unwrap_or_else(|| assets_dirs[0].join("langs.json"));
 
     let langs_content = fs::read_to_string(&langs)
-        .with_context(|| format!("读取语言配置失败：{}", langs.display()))?;
+        .with_context(|| format!("读取语言配置 {} 失败", langs.display()))?;
 
     let languages = serde_json::from_str(&langs_content)
-        .with_context(|| format!("解析语言配置失败：{}", langs.display()))?;
+        .with_context(|| format!("解析语言配置 {} 失败", langs.display()))?;
 
     let plugins = tuack_utils::plugin::manager::PluginManager::discover(
         &assets_dirs,

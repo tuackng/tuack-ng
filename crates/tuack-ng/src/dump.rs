@@ -200,7 +200,7 @@ fn dump_main(
         Ok(result) => result,
         Err(e) => {
             msg_error!("导出失败：{:?}", e);
-            msg_info!("保留临时目录以供调试：{}", tmp.path().display());
+            msg_info!("保留临时目录 {} 以供调试", tmp.path().display());
             // 故意泄漏临时目录，使其不被自动清理，便于事后调试
             std::mem::forget(tmp.clone());
             user_bail!();
@@ -219,12 +219,12 @@ fn dump_main(
 
     if let Err(e) = crate::utils::filesystem::write_outputs(&out_dir, files) {
         msg_error!("写入导出结果失败：{:?}", e);
-        msg_info!("保留临时目录以供调试：{}", tmp.path().display());
+        msg_info!("保留临时目录 {} 以供调试", tmp.path().display());
         // 故意泄漏临时目录，使其不被自动清理，便于事后调试
         std::mem::forget(tmp.clone());
         user_bail!();
     }
-    msg_info!("导出完成，输出目录：{}", out_dir.display());
+    msg_info!("导出完成，输出目录 {}", out_dir.display());
 
     Ok(())
 }
@@ -258,11 +258,11 @@ pub fn main(args: DumpArgs) -> Result<()> {
             for (idx, (_, day_config)) in config.config.subconfig.iter().enumerate() {
                 match dump_main(&config.config, day_config, idx + 1, target) {
                     Ok(()) => {}
-                    // 用户问题已在失败点输出，继续处理其余天
+                    // 用户问题已在失败点输出，继续处理其余比赛日
                     Err(e) if is_reported(&e) => failed = true,
                     // 未报告的错误 = 未处理的自身问题：立即中止
                     Err(e) => {
-                        return Err(e).context(format!("第 {} 天导出失败", day_config.name));
+                        return Err(e).context(format!("比赛日 {} 导出失败", day_config.name));
                     }
                 }
             }

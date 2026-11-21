@@ -60,7 +60,7 @@ fn compiler_for_lang(lang: &str) -> Result<&'static str> {
         .iter()
         .find(|(k, _)| *k == lang)
         .map(|(_, v)| *v)
-        .ok_or_else(|| anyhow!("不支持的语言：{lang}"))
+        .ok_or_else(|| anyhow!("语言 {lang} 不受支持"))
 }
 
 fn case_rel_path(prob_name: &str, case_id: u32, ext: &str) -> String {

@@ -97,7 +97,7 @@ fn build_ren_config(
     })
 }
 
-/// 构造一天的可渲染文档 [`RenderDocument`] 及 [`FsAssetProvider`] 素材提供者。
+/// 构造一个比赛日的可渲染文档 [`RenderDocument`] 及 [`FsAssetProvider`] 素材提供者。
 fn build_render_document(
     config: &ContestConfig,
     options: &RenderOptions,
@@ -111,10 +111,10 @@ fn build_render_document(
             .subconfig
             .get(problem_key)
             .map(|config| {
-                info!("渲染指定问题：{}", config.name);
+                info!("渲染指定问题 {}", config.name);
                 IndexMap::from([(problem_key.to_string(), config)])
             })
-            .context(format!("未找到问题：{}", problem_key))?,
+            .context(format!("未找到问题 {}", problem_key))?,
         None => {
             info!("渲染所有问题（共{}个）", day_config.subconfig.len());
             day_config
@@ -144,13 +144,13 @@ fn build_render_document(
     let mut problems = Vec::new();
 
     for (idx, (_problem_key, problem_config)) in problems_to_render.iter().enumerate() {
-        problem_pb.set_message(format!("处理问题：{}", problem_config.name));
-        info!("处理问题：{}", problem_config.name);
+        problem_pb.set_message(format!("处理问题 {}", problem_config.name));
+        info!("处理问题 {}", problem_config.name);
 
         let problem_dir = &problem_config.path;
         let statement_path = problem_dir.join("statement.md");
         if !statement_path.exists() {
-            user_bail!("未找到题面文件：{}", statement_path.display());
+            user_bail!("未找到题面文件 {}", statement_path.display());
         }
 
         // 先移除 HTML 注释，再展开模板
@@ -220,7 +220,7 @@ fn build_render_document(
         if !ImageCollector::collect(&ast).is_empty() {
             user_bail!("注意事项不支持图片");
         }
-        info!("处理注意事项文件：{}", precaution_path.display());
+        info!("处理注意事项文件 {}", precaution_path.display());
         Some(ast)
     } else {
         None
@@ -254,7 +254,7 @@ fn ren(
             .context("创建临时目录失败")?,
     );
     let tmp_dir = tmp.path().to_path_buf();
-    info!("创建临时目录：{}", tmp_dir.display());
+    info!("创建临时目录 {}", tmp_dir.display());
 
     let problem_pb = gctx()
         .multiprogress
@@ -294,8 +294,8 @@ fn ren(
     };
     problem_pb.finish_and_clear();
 
-    info!("开始渲染：{}", day_config.name);
-    let render_result = with_spinner(format!("渲染：{}", day_config.name), || {
+    info!("开始渲染 {}", day_config.name);
+    let render_result = with_spinner(format!("渲染 {}", day_config.name), || {
         renderer.render(&doc, Box::new(assets))
     });
 
@@ -303,7 +303,7 @@ fn ren(
         Ok(result) => result,
         Err(e) => {
             msg_error!("渲染失败：{:?}", e);
-            msg_info!("保留临时目录以供调试：{}", tmp_dir.display());
+            msg_info!("保留临时目录 {} 以供调试", tmp_dir.display());
             // Arc<TempDir> 无 keep()；泄漏一个引用阻止 drop，从而保留目录
             std::mem::forget(tmp.clone());
             user_bail!();
@@ -314,19 +314,19 @@ fn ren(
     let main_artifact = statements_dir.join(&target);
     if let Err(e) = crate::utils::filesystem::write_outputs(statements_dir, files) {
         msg_error!("写入渲染结果失败：{:?}", e);
-        msg_info!("保留临时目录以供调试：{}", tmp_dir.display());
+        msg_info!("保留临时目录 {} 以供调试", tmp_dir.display());
         // 同上
         std::mem::forget(tmp.clone());
         user_bail!();
     }
-    msg_info!("结果已保存到：{}", main_artifact.display());
+    msg_info!("结果已保存到 {}", main_artifact.display());
 
     if !args.no_auto_open {
         let _ = open(&main_artifact);
     }
 
     if args.keep_tmp {
-        msg_info!("保留临时目录：{}", tmp_dir.display());
+        msg_info!("保留临时目录 {}", tmp_dir.display());
         // 同上
         std::mem::forget(tmp.clone());
     } else {
@@ -365,7 +365,7 @@ pub fn main(args: RenArgs) -> Result<()> {
 
     info!("{}", statements_dir.to_string_lossy());
     if !statements_dir.exists() {
-        info!("创建题面输出目录：{}", statements_dir.display());
+        info!("创建题面输出目录 {}", statements_dir.display());
         fs::create_dir(&statements_dir)?;
     }
 
@@ -375,7 +375,7 @@ pub fn main(args: RenArgs) -> Result<()> {
 
     let statements_dir = statements_dir.join(target);
     if !statements_dir.exists() {
-        info!("创建 {} 目标输出目录：{}", target, statements_dir.display());
+        info!("创建 {} 目标输出目录 {}", target, statements_dir.display());
         fs::create_dir(&statements_dir)?;
     }
 
@@ -393,14 +393,14 @@ pub fn main(args: RenArgs) -> Result<()> {
             );
             let mut failed = false;
             for (day_count, (day_name, day_config)) in config.subconfig.iter().enumerate() {
-                day_pb.set_message(format!("处理第 {}/{} 天", day_count, total_days));
+                day_pb.set_message(format!("处理第 {}/{} 个比赛日", day_count, total_days));
                 match ren(config, day_config, None, &statements_dir, &args) {
                     Ok(()) => {}
-                    // 用户问题已在失败点输出，继续处理其余天
+                    // 用户问题已在失败点输出，继续处理其余比赛日
                     Err(e) if is_reported(&e) => failed = true,
                     // 未报告的错误 = 未处理的自身问题：立即中止
                     Err(e) => {
-                        return Err(e).context(format!("第 {} 天渲染失败", day_name));
+                        return Err(e).context(format!("比赛日 {} 渲染失败", day_name));
                     }
                 }
                 day_pb.inc(1);

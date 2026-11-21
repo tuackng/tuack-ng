@@ -372,7 +372,7 @@ impl CcrPlusDumper {
             .unwrap_or_else(|| "chk".to_string());
         let exe_name = format!("{stem}{}", std::env::consts::EXE_SUFFIX);
 
-        info!("尝试编译 SPJ：{}", checker.source.display());
+        info!("尝试编译 SPJ {}", checker.source.display());
 
         let src_tmp = self.tmp.path().join("ccr-chk-src.cpp");
         let mut src = assets.load(prob.idx, &checker.source)?;

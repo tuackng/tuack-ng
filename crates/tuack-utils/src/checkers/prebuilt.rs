@@ -22,7 +22,7 @@ impl PrebuiltChecker {
 impl Checker for PrebuiltChecker {
     fn prepare(&mut self) -> Result<()> {
         if !self.binary.exists() {
-            bail!("预编译 Checker 不存在：{}", self.binary.display());
+            bail!("预编译 Checker {} 不存在", self.binary.display());
         }
         Ok(())
     }

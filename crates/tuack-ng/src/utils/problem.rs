@@ -75,7 +75,7 @@ pub fn read_deps(problem: &ProblemConfig, deps: &[String]) -> Result<IndexMap<St
             fs::read(&path).with_context(|| format!("读取文件 {} 失败", path.display()))?;
         let name = Path::new(dep)
             .file_name()
-            .with_context(|| format!("依赖路径没有文件名：{}", dep))?
+            .with_context(|| format!("依赖路径没有文件名 {}", dep))?
             .to_string_lossy()
             .to_string();
         files.insert(name, content);
@@ -159,9 +159,9 @@ pub fn setup_interactive(
     };
 
     let grader = resolve_problem_file(problem, grader)
-        .with_context(|| format!("无法解析交互 grader 源文件：{grader}"))?;
+        .with_context(|| format!("无法解析交互 grader 源文件 {grader}"))?;
     let header = resolve_problem_file(problem, &interactive.header)
-        .with_context(|| format!("无法解析交互 header 文件：{}", interactive.header))?;
+        .with_context(|| format!("无法解析交互 header 文件 {}", interactive.header))?;
 
     runner.set_interactive(&grader, &header)
 }

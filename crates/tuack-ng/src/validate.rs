@@ -42,7 +42,7 @@ pub fn compile_validator(
     };
 
     let source_path = resolve_problem_file(problem_config, &val_config.source)
-        .with_context(|| format!("无法解析 Validator 源文件：{}", val_config.source))?;
+        .with_context(|| format!("无法解析 Validator 源文件 {}", val_config.source))?;
     let deps = read_deps(problem_config, &val_config.deps).context("无法读取 Validator 依赖")?;
 
     with_spinner(
@@ -132,7 +132,7 @@ fn validate_problem(
             }
         }
 
-        case_pb.set_message(format!("校验测试点：{}/{}", idx + 1, data_items.len()));
+        case_pb.set_message(format!("校验测试点 {}/{}", idx + 1, data_items.len()));
     }
 
     if in_problem {
@@ -152,7 +152,7 @@ fn validate_problem(
     Ok(failed > 0)
 }
 
-/// 校验一天，返回是否有题目未通过校验
+/// 校验一个比赛日，返回是否有题目未通过校验
 fn validate_day(
     day_config: &ContestDayConfig,
     target: Target,
@@ -198,18 +198,18 @@ pub fn main(args: ValidateArgs) -> Result<()> {
             let day_config = config
                 .subconfig
                 .get(day_key)
-                .with_context(|| format!("未找到天配置：{}", day_key))?;
+                .with_context(|| format!("未找到比赛日配置 {}", day_key))?;
             let problem_config = day_config
                 .subconfig
                 .get(prob_key)
-                .with_context(|| format!("未找到题目配置：{}", prob_key))?;
+                .with_context(|| format!("未找到题目配置 {}", prob_key))?;
             failed |= validate_problem(problem_config, args.target, &args.object, true)?;
         }
         CurrentLocation::Day(day_key) => {
             let day_config = config
                 .subconfig
                 .get(day_key)
-                .with_context(|| format!("未找到天配置：{}", day_key))?;
+                .with_context(|| format!("未找到比赛日配置 {}", day_key))?;
             failed = validate_day(day_config, args.target, &args.object, true)?;
         }
         CurrentLocation::Root => {
@@ -224,7 +224,7 @@ pub fn main(args: ValidateArgs) -> Result<()> {
                     .progress_chars("=> "),
             );
             for (day_idx, (_, day_config)) in config.subconfig.iter().enumerate() {
-                day_pb.set_message(format!("处理第 {}/{} 天", day_idx + 1, total_days));
+                day_pb.set_message(format!("处理第 {}/{} 个比赛日", day_idx + 1, total_days));
                 failed |= validate_day(day_config, args.target, &args.object, false)?;
                 day_pb.inc(1);
             }

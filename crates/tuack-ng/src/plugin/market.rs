@@ -142,7 +142,7 @@ fn market_show(name: &str) -> Result<()> {
         .plugins
         .iter()
         .find(|p| p.name == name)
-        .with_context(|| format!("市场中未找到：{}", name))?;
+        .with_context(|| format!("市场中未找到插件 {}", name))?;
     let mut fields = AlignedFields::new();
     fields.push("名称", &p.name);
     fields.push("版本", &p.version);
@@ -172,13 +172,13 @@ fn market_install(name: &str, force: bool) -> Result<()> {
         .plugins
         .iter()
         .find(|p| p.name == name)
-        .with_context(|| format!("市场中未找到：{}", name))?;
+        .with_context(|| format!("市场中未找到插件 {}", name))?;
 
     check_market_plugin_api(plugin)?;
 
     let dest = gctx().plugins.plugins_dir().join(name);
     if dest.exists() && !force {
-        user_bail!("插件目录已存在：{}（加 `--force` 覆盖）", dest.display());
+        user_bail!("插件目录 {} 已存在，加 `--force` 覆盖", dest.display());
     }
 
     install_plugin(plugin, &dest)?;
@@ -219,7 +219,7 @@ fn market_update(name: Option<String>, all: bool, force: bool) -> Result<()> {
     } else {
         let plugin_name = name.as_deref().expect("已校验 name 存在");
         if !installed.iter().any(|n| n == plugin_name) {
-            user_bail!("插件未安装，无法更新：{}", plugin_name);
+            user_bail!("插件 {} 未安装，无法更新", plugin_name);
         }
         match index.plugins.iter().find(|p| p.name == plugin_name) {
             Some(plugin) => targets.push(plugin),
@@ -289,9 +289,9 @@ fn market_update_one(plugin: &MarketplacePlugin, force: bool) -> Result<()> {
 /// 比较市场版本与已安装版本（均为 semver）。
 fn version_cmp(market: &str, installed: &str) -> Result<std::cmp::Ordering> {
     let market =
-        semver::Version::parse(market).with_context(|| format!("市场版本号非法：{}", market))?;
+        semver::Version::parse(market).with_context(|| format!("市场版本号 {} 非法", market))?;
     let installed = semver::Version::parse(installed)
-        .with_context(|| format!("已安装版本号非法：{}", installed))?;
+        .with_context(|| format!("已安装版本号 {} 非法", installed))?;
     Ok(market.cmp(&installed))
 }
 
@@ -303,7 +303,7 @@ fn check_market_plugin_api(plugin: &MarketplacePlugin) -> Result<()> {
 /// 下载并安装市场插件到 `dest`：先下载校验，再解包到暂存目录，成功后才替换目标。
 fn install_plugin(plugin: &MarketplacePlugin, dest: &Path) -> Result<()> {
     if !valid_name(&plugin.name) {
-        bail!("非法的插件名：{}", plugin.name);
+        bail!("插件名 {} 非法", plugin.name);
     }
     msg_info!("下载 {} ...", plugin.download_url.dimmed());
     let mut response = agent(Duration::from_secs(600))
@@ -321,7 +321,7 @@ fn install_plugin(plugin: &MarketplacePlugin, dest: &Path) -> Result<()> {
 
     let actual = sha256_hex(archive.reopen()?).context("计算 sha256 失败")?;
     if actual != plugin.sha256.to_lowercase() {
-        bail!("sha256 校验失败：期望 {}，实际 {}", plugin.sha256, actual);
+        bail!("sha256 校验失败，期望 {}，实际 {}", plugin.sha256, actual);
     }
 
     // 解包到同目录暂存目录；失败不影响已安装版本，成功后再替换。
@@ -336,7 +336,7 @@ fn install_plugin(plugin: &MarketplacePlugin, dest: &Path) -> Result<()> {
     let mut backup_kept = false;
     let staged = (|| -> Result<()> {
         extract_zip(archive.path(), &staging)
-            .with_context(|| format!("解包插件失败：{}", plugin.artifact_name))?;
+            .with_context(|| format!("解包插件 {} 失败", plugin.artifact_name))?;
         if had_dest {
             fs::rename(dest, &backup).context("备份原插件目录失败")?;
         }
@@ -396,7 +396,7 @@ fn install_plugin(plugin: &MarketplacePlugin, dest: &Path) -> Result<()> {
 fn extract_zip(archive_path: &Path, dest: &Path) -> Result<()> {
     let mut archive = zip::ZipArchive::new(fs::File::open(archive_path)?)?;
     if archive.len() > MAX_ENTRIES {
-        bail!("归档条目过多：{}", archive.len());
+        bail!("归档条目过多，共 {} 个", archive.len());
     }
     fs::create_dir_all(dest)?;
     let mut total = 0u64;
@@ -408,7 +408,7 @@ fn extract_zip(archive_path: &Path, dest: &Path) -> Result<()> {
         }
         let Some(rel) = entry.enclosed_name() else {
             bail!(
-                "归档内非法路径：{}",
+                "归档内非法路径 {}",
                 String::from_utf8_lossy(entry.name_raw())
             );
         };

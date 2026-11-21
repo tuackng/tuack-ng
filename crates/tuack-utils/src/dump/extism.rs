@@ -61,7 +61,7 @@ impl ExtismDumper {
             .map_err(|e| anyhow!(e).context("加载 extism 导出器失败"))?;
 
         if !plugin.function_exists(&function) {
-            bail!("插件未导出函数：{}", function);
+            bail!("插件未导出函数 {}", function);
         }
 
         Ok(Self {

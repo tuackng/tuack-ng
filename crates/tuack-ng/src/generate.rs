@@ -281,7 +281,7 @@ fn selected_problems() -> Result<Vec<&'static ProblemConfig>> {
             .subconfig
             .get(day_name)
             .map(|day| day.subconfig.values().collect())
-            .context(format!("找不到天 '{}'", day_name))?,
+            .context(format!("找不到比赛日 '{}'", day_name))?,
         CurrentLocation::Problem(day_name, problem_name) => loaded
             .config
             .subconfig
@@ -516,10 +516,7 @@ fn gen_complete(args: GenCompleteArgs) -> Result<()> {
         "bash" => Shell::Bash,
         "zsh" => Shell::Zsh,
         "fish" => Shell::Fish,
-        _ => {
-            error!("不支持的 shell 类型：{}", args.name);
-            user_bail!("不支持的 shell 类型")
-        }
+        _ => user_bail!("无法识别 shell {}", args.name),
     };
     let mut cmd = crate::Cli::command_i18n();
     clap_complete::generate(shell, &mut cmd, "tuack-ng", &mut io::stdout());

@@ -237,12 +237,12 @@ fn set_disabled(name: &str, disabled: bool) -> Result<()> {
     let path = s.dir.join(DISABLED_MARKER);
     if disabled {
         fs::write(&path, "")?;
-        msg_info!("已禁用插件：{}", s.name);
+        msg_info!("已禁用插件 {}", s.name);
     } else if path.exists() {
         fs::remove_file(&path)?;
-        msg_info!("已启用插件：{}", s.name);
+        msg_info!("已启用插件 {}", s.name);
     } else {
-        msg_info!("插件已是启用状态：{}", s.name);
+        msg_info!("插件 {} 已经启用", s.name);
     }
     Ok(())
 }
@@ -252,7 +252,7 @@ fn set_trusted(name: &str, trusted: bool, yes: bool) -> Result<()> {
     let path = s.dir.join(TRUSTED_MARKER);
     if trusted {
         if path.exists() {
-            msg_info!("插件已是信任状态：{}", s.name);
+            msg_info!("插件 {} 已经受信任", s.name);
             return Ok(());
         }
         print_status(s)?;
@@ -267,13 +267,13 @@ fn set_trusted(name: &str, trusted: bool, yes: bool) -> Result<()> {
             return Ok(());
         }
         fs::write(&path, "")?;
-        msg_info!("已信任插件：{}", s.name);
+        msg_info!("已信任插件 {}", s.name);
     } else {
         if path.exists() {
             fs::remove_file(&path)?;
-            msg_info!("已取消信任：{}", s.name);
+            msg_info!("已取消信任插件 {}", s.name);
         } else {
-            msg_info!("插件未处于信任状态：{}", s.name);
+            msg_info!("插件 {} 尚未受信任", s.name);
         }
     }
     Ok(())
@@ -290,8 +290,8 @@ fn uninstall(name: &str, yes: bool) -> Result<()> {
         msg_info!("已取消");
         return Ok(());
     }
-    fs::remove_dir_all(&dir).with_context(|| format!("删除插件目录失败：{}", dir.display()))?;
-    msg_info!("已卸载插件：{}", pkg);
+    fs::remove_dir_all(&dir).with_context(|| format!("删除插件目录 {} 失败", dir.display()))?;
+    msg_info!("已卸载插件 {}", pkg);
     Ok(())
 }
 

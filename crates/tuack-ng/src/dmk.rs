@@ -201,7 +201,7 @@ fn find_std(problem: &ProblemConfig) -> Result<PathBuf> {
             && str.replace(' ', "") == "==100"
         {
             match resolve_problem_file(problem, &case.path)
-                .with_context(|| format!("无法解析标程 {name}（{}）", case.path))
+                .with_context(|| format!("无法解析标程 {name} 的路径 {}", case.path))
             {
                 Ok(path) => {
                     info!("找到标程 {name}, 位置 {}", path.display());
@@ -243,12 +243,12 @@ pub fn main(args: DmkArgs) -> Result<()> {
                 .config
                 .subconfig
                 .get(day)
-                .context(format!("无法获取天配置：{}", day))?;
+                .context(format!("无法获取比赛日配置 {}", day))?;
 
             let problem_config = day_config
                 .subconfig
                 .get(prog)
-                .context(format!("无法获取题目配置：{}/{}", day, prog))?;
+                .context(format!("无法获取题目配置 {}/{}", day, prog))?;
 
             (problem_config, day_config)
         } else {
@@ -308,7 +308,7 @@ pub fn main(args: DmkArgs) -> Result<()> {
     };
     if !target_dir.exists() {
         std::fs::create_dir_all(&target_dir)?;
-        info!("创建目标目录：{}", target_dir.display());
+        info!("创建目标目录 {}", target_dir.display());
     }
 
     // 种子：加载 -> 合并（Reset 强制重生成）-> 结束时保存
@@ -321,7 +321,7 @@ pub fn main(args: DmkArgs) -> Result<()> {
 
     // 标程：查找 -> 构造 -> 交互配置 -> 编译
     let std_path = find_std(current_problem)?;
-    info!("找到标程：{}", std_path.display());
+    info!("找到标程 {}", std_path.display());
     let mut runner = build_std_runner(&std_path, current_day, current_problem)?;
 
     with_spinner("编译标程", || runner.prepare())?;
