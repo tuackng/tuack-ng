@@ -63,19 +63,28 @@ struct LatexVisitor {
 }
 
 impl LatexVisitor {
+    /// 格式化数字的模板工具：它们包裹的数字不触发 "数字太长" 告警
+    const NUMBER_TOOLS: [&str; 4] = ["hn", "comma", "spaces", "sci"];
+
     /// 计算 content 内 `[start, end)`（字节偏移）在源码中的区间。
     /// `base` 为 content 首字节在源码中的偏移；为 None 时无精确映射（返回 None）。
     fn cap_span(base: Option<usize>, start: usize, end: usize) -> Option<Span> {
         base.map(|b| Span::new(b + start, b + end))
     }
 
-    /// 判断数字 `[start,end)` 是否位于 `tools.hn(` / `tools.comma(` 调用内部。
-    /// 被模板数字工具包装的数字不应触发 "数字太长" 告警。
+    /// 判断数字 `[start,end)` 是否由模板数字工具格式化。
+    /// 已格式化的数字不应触发 "数字太长" 告警。
     fn in_tools_number(text: &str, start: usize, end: usize) -> bool {
+        Self::in_tools_call(text, start, end) || Self::in_number_filter(text, start, end)
+    }
+
+    /// 判断数字 `[start,end)` 是否位于 [`Self::NUMBER_TOOLS`] 中某个工具的调用内部。
+    fn in_tools_call(text: &str, start: usize, end: usize) -> bool {
         let before = &text[..start];
         let after = &text[end..];
-        for prefix in ["tools.hn(", "tools.comma("] {
-            let Some(open) = before.rfind(prefix) else {
+        for name in Self::NUMBER_TOOLS {
+            let prefix = format!("tools.{name}(");
+            let Some(open) = before.rfind(prefix.as_str()) else {
                 continue;
             };
             // 同一括号对：open 至数字前不应出现 `)`（数字必须仍在调用括号内）。
@@ -87,6 +96,35 @@ impl LatexVisitor {
             }
         }
         false
+    }
+
+    /// 判断数字 `[start,end)` 是否位于 `{{ ... }}` 内，且该表达式经 [`Self::NUMBER_TOOLS`]
+    /// 中某个过滤器处理。
+    fn in_number_filter(text: &str, start: usize, end: usize) -> bool {
+        let before = &text[..start];
+        let Some(open) = before.rfind("{{") else {
+            return false;
+        };
+        // 数字必须与 `{{` 在同一个表达式内。
+        if before[open..].contains("}}") {
+            return false;
+        }
+
+        let Some(close) = text[end..].find("}}") else {
+            return false;
+        };
+        let expr = &text[end..end + close];
+        let Some(pipe) = expr.find('|') else {
+            return false;
+        };
+
+        let filter: String = expr[pipe + 1..]
+            .trim_start()
+            .chars()
+            .take_while(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '.')
+            .collect();
+        let name = filter.rsplit('.').next().unwrap_or_default();
+        Self::NUMBER_TOOLS.contains(&name)
     }
 
     /// 检测公式文本，返回违规列表（不做 push，供行内逐条 / 块级汇总复用）。
@@ -194,7 +232,8 @@ impl LatexVisitor {
             }
             problems.push(LatexProblem {
                 info: format!(
-                    "数字 `{}` 太长，建议用科学计数法（如 `10^6`）、定义为变量，或使用 tools.hn/comma",
+                    "数字 `{}` 太长，建议用科学计数法（如 `10^6`）、定义为变量，或使用 \
+                     `tools.hn`/`tools.comma`/`tools.spaces`/`tools.sci`（函数或过滤器）",
                     cap.as_str()
                 ),
                 span: Self::cap_span(base, cap.start(), cap.end()),
@@ -209,7 +248,8 @@ impl LatexVisitor {
             }
             problems.push(LatexProblem {
                 info: format!(
-                    "数字 `{}` 太长，建议用科学计数法、定义为变量，或使用 tools.hn/comma",
+                    "数字 `{}` 太长，建议用科学计数法、定义为变量，或使用 \
+                     `tools.hn`/`tools.comma`/`tools.spaces`/`tools.sci`（函数或过滤器）",
                     cap.as_str()
                 ),
                 span: Self::cap_span(base, cap.start(), cap.end()),
@@ -306,5 +346,50 @@ impl CheckRule for Latex {
         };
         doc.visit_with(&mut visitor);
         Ok(CheckResult::Tagged(visitor.messages))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LatexVisitor;
+
+    const NUMBER: &str = "1000000";
+
+    fn is_wrapped(text: &str) -> bool {
+        let start = text.find(NUMBER).expect("测试文本应包含 1000000");
+        LatexVisitor::in_tools_number(text, start, start + NUMBER.len())
+    }
+
+    #[test]
+    fn tools_call_wraps_number() {
+        assert!(is_wrapped("{{ tools.comma(1000000) }}"));
+        assert!(is_wrapped("{{ tools.hn(1000000, \"x\") }}"));
+        assert!(is_wrapped("{{ tools.spaces(1000000) }}"));
+        assert!(is_wrapped("{{ tools.sci(1000000) }}"));
+    }
+
+    #[test]
+    fn filter_wraps_number() {
+        for text in [
+            "{{ 1000000|tools.comma }}",
+            "{{ 1000000 |tools.comma }}",
+            "{{ 1000000| tools.comma }}",
+            "{{ 1000000 | tools.comma }}",
+            "{{ 1000000 | tools.hn(\"x\") }}",
+            "{{ 1000000|tools.spaces }}",
+            "{{ 1000000 | tools.spaces }}",
+            "{{ 1000000| tools.sci }}",
+        ] {
+            assert!(is_wrapped(text), "{text}");
+        }
+    }
+
+    #[test]
+    fn other_filters_do_not_wrap_number() {
+        assert!(!is_wrapped("{{ 1000000 }}"));
+        assert!(!is_wrapped("{{ 1000000|abs }}"));
+        assert!(!is_wrapped("{{ 1000000|tools.cases }}"));
+        assert!(!is_wrapped("{{ 1000000 | abs }}"));
+        assert!(!is_wrapped("$1000000$"));
     }
 }

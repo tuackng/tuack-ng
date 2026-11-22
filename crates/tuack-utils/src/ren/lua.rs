@@ -16,6 +16,8 @@ use mlua::{AnyUserData, Function, Lua, LuaSerdeExt, Table, UserData, Value};
 // -- 与 jinja 一致的
 // tng.tools.int_lg
 // tng.tools.comma
+// tng.tools.spaces
+// tng.tools.sci
 // tng.tools.hn
 // tng.tools.cases
 //
@@ -104,7 +106,15 @@ fn build_tools(lua: &mut Lua) -> mlua::Result<mlua::Table> {
         ),
         (
             "comma",
-            lua.create_function(|_, num: i64| Ok(tools::comma(num)))?,
+            lua.create_function(|_, num: f64| Ok(tools::comma(num)))?,
+        ),
+        (
+            "spaces",
+            lua.create_function(|_, num: f64| Ok(tools::spaces(num)))?,
+        ),
+        (
+            "sci",
+            lua.create_function(|_, num: f64| Ok(tools::sci(num)))?,
         ),
         (
             "hn",
