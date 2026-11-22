@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::utils::filesystem::copy_dir_recursive;
+use crate::utils::filesystem::{copy_dir_recursive, copy_file};
 use clap::Args;
 use clap::Subcommand;
 use clap_complete::Shell;
@@ -27,6 +27,9 @@ pub enum Targets {
     /// 生成题目文件夹
     #[command(version, aliases = ["p", "prob"])]
     Problem(GenStatementArgs),
+    /// 生成空白题目文件夹
+    #[command(version, alias = "e")]
+    Empty(GenStatementArgs),
 
     /// 自动检测数据
     #[command(version, alias = "t")]
@@ -167,33 +170,32 @@ fn gen_day(args: GenStatementArgs) -> Result<()> {
     Ok(())
 }
 
-fn gen_problem(args: GenStatementArgs) -> Result<()> {
-    // 检查是否在 day 目录下执行
+fn gen_problem(args: GenStatementArgs, scaffold: &str) -> Result<()> {
     let current_dir = std::env::current_dir()?;
     let config_path = current_dir.join(CONFIG_FILE_NAME);
 
-    // 检查当前目录是否存在 day 配置文件
     if !config_path.exists() {
-        user_bail!("problem 命令必须在 day 目录下执行");
+        user_bail!("{} 命令必须在 day 目录下执行", scaffold);
     }
 
-    // 检查配置文件是否为 day 类型
     let content = std::fs::read_to_string(&config_path)?;
     let json_value: serde_json::Value = serde_json::from_str(&content)?;
 
     if let Some(folder) = json_value.get("folder").and_then(|v| v.as_str()) {
         if folder != "day" {
-            user_bail!("problem 命令必须在 day 目录下执行");
+            user_bail!("{} 命令必须在 day 目录下执行", scaffold);
         }
     } else {
         user_bail!("无效的配置文件");
     }
 
-    // 查找 scaffold/problem 目录（资源目录列表中第一个存在的）
-    let scaffold_path = find_in_scaffold("problem", true)?;
+    let scaffold_path = find_in_scaffold(scaffold, true)?;
 
     for problem_name in &args.name {
         copy_dir_recursive(&scaffold_path, current_dir.join(problem_name))?;
+        if scaffold_path.join("deps").is_dir() {
+            copy_testlib(&current_dir.join(problem_name))?;
+        }
 
         let mut _ctx = LoadContext::new();
         let mut problem_json: ProblemConfig = ProblemConfig::load(
@@ -210,7 +212,6 @@ fn gen_problem(args: GenStatementArgs) -> Result<()> {
         )?;
     }
 
-    // 更新 day 配置文件的 subdir 字段
     let mut day_config: serde_json::Value = serde_json::from_str(&content)?;
     if let Some(subdir) = day_config.get_mut("subdir").and_then(|v| v.as_array_mut()) {
         for problem_name in &args.name {
@@ -220,6 +221,32 @@ fn gen_problem(args: GenStatementArgs) -> Result<()> {
 
     let updated_content = serde_json::to_string_pretty(&day_config)?;
     std::fs::write(&config_path, updated_content)?;
+    Ok(())
+}
+
+/// 复制内置的 `testlib.h` 到题目的 `deps/`，并删除其中的 `.gitkeep`。
+///
+/// # Errors
+///
+/// 不存在 `deps/` 时会返回 `Err`。
+fn copy_testlib(problem_path: &Path) -> Result<()> {
+    let deps_dir = problem_path.join("deps");
+
+    let testlib = crate::context::gctx()
+        .assets_dirs
+        .iter()
+        .map(|dir| dir.join("checkers").join("testlib.h"))
+        .find(|path| path.is_file())
+        .context("找不到 assets/checkers/testlib.h")?;
+
+    copy_file(&testlib, deps_dir.join("testlib.h"))
+        .with_context(|| format!("复制 testlib.h 到 {} 失败", deps_dir.display()))?;
+
+    let keep = deps_dir.join(".gitkeep");
+    if keep.exists() {
+        fs::remove_file(keep)?;
+    }
+
     Ok(())
 }
 
@@ -528,7 +555,8 @@ pub fn main(args: GenArgs) -> Result<()> {
     match args.target {
         Targets::Contest(args) => gen_contest(args)?,
         Targets::Day(args) => gen_day(args)?,
-        Targets::Problem(args) => gen_problem(args)?,
+        Targets::Problem(args) => gen_problem(args, "problem")?,
+        Targets::Empty(args) => gen_problem(args, "empty")?,
         Targets::Data(args) => gen_data(args)?,
         Targets::Samples(args) => gen_sample(args)?,
         Targets::All(args) => gen_all(args)?,
@@ -540,6 +568,11 @@ pub fn main(args: GenArgs) -> Result<()> {
     Ok(())
 }
 
+/// 按资源目录的优先级查找第一个存在的 `scaffold/<name>`，并按 `is_dir` 校验类型。
+///
+/// # Errors
+///
+/// 找不到或类型不符时返回 `Err`。
 fn find_in_scaffold(name: &str, is_dir: bool) -> Result<PathBuf> {
     let context = crate::context::gctx();
 

@@ -57,12 +57,20 @@ pub fn copy_dir_recursive<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> Res
             #[cfg(unix)]
             add_write_permission(&dst_path)?;
         } else {
-            fs::copy(&src_path, &dst_path)?;
-            #[cfg(unix)]
-            add_write_permission(&dst_path)?;
+            copy_file(&src_path, &dst_path)?;
         }
     }
 
+    Ok(())
+}
+
+/// 复制单个文件；来源先 canonicalize，Unix 下确保复制出的文件可写。
+pub(crate) fn copy_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> Result<()> {
+    let src = fs::canonicalize(src.as_ref())?;
+    let dst = dst.as_ref();
+    fs::copy(&src, dst)?;
+    #[cfg(unix)]
+    add_write_permission(dst)?;
     Ok(())
 }
 

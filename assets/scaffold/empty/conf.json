@@ -1,0 +1,18 @@
+{
+  "version": 7,
+  "folder": "problem",
+  "type": "program",
+  "name": "题目英文名称",
+  "title": "题目名称",
+  "time limit": 1.0,
+  "memory limit": "512 MiB",
+  "args": {},
+  "dmk": "skip",
+  "generator": null,
+  "samples": [],
+  "data": [],
+  "subtasks": {},
+  "tests": {},
+  "checker": null,
+  "validator": null
+}

@@ -5,7 +5,7 @@
   "subdir": [],
   "title": "场次标题",
   "compile": {
-    "cpp": "-O2 -std=c++14 -static"
+    "cpp": "-O2 -std=c++14"
   },
   "start time": [
     1970,
