@@ -3827,7 +3827,7 @@ dependencies = [
 
 [[package]]
 name = "tuack-config"
-version = "1.1.0-alpha.4"
+version = "1.1.0-alpha.5"
 dependencies = [
  "anstream",
  "anyhow",
@@ -3846,7 +3846,7 @@ dependencies = [
 
 [[package]]
 name = "tuack-lib"
-version = "1.1.0-alpha.4"
+version = "1.1.0-alpha.5"
 dependencies = [
  "anyhow",
  "bytesize",
@@ -3860,7 +3860,7 @@ dependencies = [
 
 [[package]]
 name = "tuack-ng"
-version = "1.1.0-alpha.4"
+version = "1.1.0-alpha.5"
 dependencies = [
  "anstream",
  "anyhow",
@@ -3907,7 +3907,7 @@ dependencies = [
 
 [[package]]
 name = "tuack-ng-parser"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "rushdown",
  "serde",
@@ -3917,7 +3917,7 @@ dependencies = [
 
 [[package]]
 name = "tuack-plugin-sdk"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "extism-pdk",
  "log",
@@ -3928,7 +3928,7 @@ dependencies = [
 
 [[package]]
 name = "tuack-utils"
-version = "1.1.0-alpha.4"
+version = "1.1.0-alpha.5"
 dependencies = [
  "anyhow",
  "autocorrect",

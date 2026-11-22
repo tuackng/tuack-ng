@@ -2,7 +2,7 @@
 name = "tuack-plugin-sdk"
 description = "tuack-ng 插件 Rust SDK"
 edition.workspace = true
-version = "2.0.1"
+version = "2.0.2"
 authors.workspace = true
 license = "MIT"
 repository.workspace = true

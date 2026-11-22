@@ -11,7 +11,7 @@ members = [
 resolver = "3"
 
 [workspace.package]
-version = "1.1.0-alpha.4"
+version = "1.1.0-alpha.5"
 edition = "2024"
 rust-version = "1.96"
 authors = ["Pulsar <Pulsar33550336@163.com>"]
@@ -34,10 +34,10 @@ serde_json = { version = "1.0.154", features = ["preserve_order"] }
 serde_many = { version = "0.1.0", features = ["derive"] }
 sysinfo = "0.39.6"
 tempfile = "3.27.0"
-tuack-config = { version = "1.1.0-alpha.4", path = "crates/tuack-config" }
-tuack-lib = { version = "1.1.0-alpha.4", path = "crates/tuack-lib" }
-tuack-ng-parser = { version = "1.0.4", path = "crates/tuack-ng-parser" }
-tuack-utils = { version = "1.1.0-alpha.4", path = "crates/tuack-utils" }
+tuack-config = { version = "1.1.0-alpha.5", path = "crates/tuack-config" }
+tuack-lib = { version = "1.1.0-alpha.5", path = "crates/tuack-lib" }
+tuack-ng-parser = { version = "1.0.5", path = "crates/tuack-ng-parser" }
+tuack-utils = { version = "1.1.0-alpha.5", path = "crates/tuack-utils" }
 zip = "9.0.5"
 
 [profile.release]

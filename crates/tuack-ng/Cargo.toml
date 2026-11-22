@@ -7,6 +7,7 @@ description = "重构后的 tuack 项目，旨在提供更加高效和轻量的�
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
+publish = false
 default-run = "tuack-ng"
 
 [dependencies]
