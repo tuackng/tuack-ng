@@ -2,12 +2,12 @@
   这是 Tuack-NG 的示例模板，用来演示题面和各项功能的常用写法/用法。
 
   如果要配置 `conf.json`，见 https://docs.tuack-ng.ink/app/project/config.html。
+
+  如果您想要一个空白模板，请使用 `tuack-ng gen empty`。
 -->
 
 <!--
   您可以在题面里像这样写注释；注释不会出现在渲染结果中。
-
-  如果您想要一个空白模板，请使用 `tuack-ng gen empty`。
 
   Tuack-NG 的题面使用 Markdown 编写，支持大部分常用语法，比如：
 
